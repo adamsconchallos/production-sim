@@ -12,7 +12,8 @@ import {
   AlertTriangle,
   Lightbulb,
   Download,
-  Copy
+  Copy,
+  ExternalLink
 } from 'lucide-react';
 
 // --- UI Components ---
@@ -924,9 +925,9 @@ export default function StratFi() {
                             />
                         </div>
                         
-                        <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                        <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6">
                             <div className="flex justify-between items-center mb-2">
-                                <span className="text-xs font-bold text-slate-500 uppercase">Data for Copy/Paste</span>
+                                <span className="text-xs font-bold text-slate-500 uppercase">1. Copy Data</span>
                                 <button onClick={copyTicket} className="text-xs flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-bold">
                                     <Copy className="w-3 h-3" /> Copy to Clipboard
                                 </button>
@@ -941,6 +942,21 @@ export default function StratFi() {
                                 Format: Firm ID | Group | Item | Value <br/>
                                 Click text to select all, then Ctrl+C to copy.
                             </p>
+                        </div>
+
+                        <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 flex justify-between items-center">
+                            <div>
+                                <span className="text-xs font-bold text-indigo-900 uppercase block">2. Submit Data</span>
+                                <p className="text-xs text-indigo-700">Paste the copied data into the official form.</p>
+                            </div>
+                            <a 
+                                href="https://forms.gle/t39WQg3pWq1ko8wP9" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
+                            >
+                                Go to Google Form <ExternalLink className="w-4 h-4" />
+                            </a>
                         </div>
                     </div>
                 </div>
