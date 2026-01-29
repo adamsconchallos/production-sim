@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Calculator, 
   Settings,
@@ -10,7 +10,9 @@ import {
   BarChart3,
   Table,
   AlertTriangle,
-  Lightbulb
+  Lightbulb,
+  Download,
+  Copy
 } from 'lucide-react';
 
 // --- UI Components ---
@@ -143,6 +145,11 @@ const BASE_COSTS = {
 
 export default function StratFi() {
   
+  // --- EFFECT: Set Title ---
+  useEffect(() => {
+    document.title = "StratFi - Strategy at Altitude";
+  }, []);
+
   // --- STATE: View Mode ---
   const [view, setView] = useState('grid'); 
 
@@ -202,7 +209,6 @@ export default function StratFi() {
 
   // --- ENGINE: The Chained Calculation ---
   const simulation = useMemo(() => {
-    // startInventoryDetails: Object { A: { units: 0, value: 0 }, ... }
     const calculateYear = (start, decision, prevEfficiency = 0, startInventoryDetails) => {
       // 1. Efficiency & Costs
       const costMultiplier = 1 - prevEfficiency;
@@ -217,10 +223,8 @@ export default function StratFi() {
       let totalInventoryUnits = 0;
       let totalInventoryValue = 0;
       
-      // Store ending inventory state for next round
       const nextInventoryDetails = { A: {units:0, value:0}, B: {units:0, value:0}, C: {units:0, value:0} };
 
-      // Helper: FIFO Sales Logic
       const products = ['A', 'B', 'C'];
       
       let salesCapped = false;
@@ -229,44 +233,32 @@ export default function StratFi() {
       products.forEach(p => {
         const prodQty = decision.qty[p];
         
-        // Resource Usage
         machineHoursUsed += prodQty * RECIPE.machine[p];
         labourHoursUsed += prodQty * RECIPE.labour[p];
         
-        // Current Production Unit Cost
         const unitMachineCost = RECIPE.machine[p] * BASE_COSTS.machine;
         const unitLabourCost = RECIPE.labour[p] * BASE_COSTS.labour;
         const unitMatCost = RECIPE.material[p] * BASE_COSTS.material;
         const currentUnitCost = (unitMachineCost + unitLabourCost + unitMatCost) * costMultiplier;
 
-        totalProdCost += prodQty * currentUnitCost; // Cash Outflow
+        totalProdCost += prodQty * currentUnitCost; 
 
         // --- FIFO SALES LOGIC ---
-        // 1. Identify Available Stock
         const oldUnits = startInventoryDetails ? startInventoryDetails[p].units : 0;
         const oldTotalValue = startInventoryDetails ? startInventoryDetails[p].value : 0;
         const oldUnitCost = oldUnits > 0 ? oldTotalValue / oldUnits : 0;
 
-        // 2. Determine Demand
-        let demand = prodQty * salesRate; // Sales plan applies to production volume base
-        // If prod is 0 but we have inventory, allow selling from inventory if rate > 0
+        let demand = prodQty * salesRate; 
         if (prodQty === 0 && oldUnits > 0 && salesRate > 0) {
-             // If prod is 0, we can interpret salesRate as % of Inventory? 
-             // Or keep it simple: Sales Plan is usually around 100%. 
-             // If Prod=0, Sales=0 with current formula. 
-             // LIMITATION: Users must produce to generate the "demand signal" in this simple model.
              demand = 0; 
         }
 
-        // Cap demand at total available
         if (demand > (oldUnits + prodQty)) {
             salesCapped = true;
-            // Calculate effective max rate for UI warning
             if (prodQty > 0) maxRatePossible = ((oldUnits + prodQty) / prodQty * 100).toFixed(0);
             demand = oldUnits + prodQty;
         }
 
-        // 3. Fulfill Demand (FIFO: Old first, then New)
         let soldFromOld = 0;
         let soldFromNew = 0;
 
@@ -280,19 +272,16 @@ export default function StratFi() {
 
         totalUnitsSold += (soldFromOld + soldFromNew);
 
-        // 4. Calculate Revenue & COGS
         revenue += (soldFromOld + soldFromNew) * decision.price[p];
         
-        // FIFO Costing
         const cogsOld = soldFromOld * oldUnitCost;
         const cogsNew = soldFromNew * currentUnitCost;
         cogs += (cogsOld + cogsNew);
 
-        // 5. Update Ending Inventory
         const endUnitsOld = oldUnits - soldFromOld;
         const endUnitsNew = prodQty - soldFromNew;
-        const endValueOld = endUnitsOld * oldUnitCost; // Remaining old value
-        const endValueNew = endUnitsNew * currentUnitCost; // Remaining new value
+        const endValueOld = endUnitsOld * oldUnitCost; 
+        const endValueNew = endUnitsNew * currentUnitCost; 
 
         nextInventoryDetails[p].units = endUnitsOld + endUnitsNew;
         nextInventoryDetails[p].value = endValueOld + endValueNew;
@@ -367,14 +356,14 @@ export default function StratFi() {
             // Balance Sheet Items
             cash: endCash, 
             inventory: totalInventoryValue, 
-            inventoryUnits: totalInventoryUnits, // New Metric
+            inventoryUnits: totalInventoryUnits, 
             fixedAssets: endFixedAssets,
             totalAssets: endTotalAssets,
             stDebt: endST,
             ltDebt: endLT,
             equity: endEquity,
             totalLiabEquity: endTotalLiabEquity,
-            totalUnitsSold // New Metric
+            totalUnitsSold 
         },
         flags: {
             salesCapped,
@@ -385,7 +374,7 @@ export default function StratFi() {
         usage: { machine: machineHoursUsed, labour: labourHoursUsed },
         nextStart: {
           cash: endCash,
-          inventory: totalInventoryValue, // $ Value
+          inventory: totalInventoryValue, 
           fixedAssets: endFixedAssets,
           stDebt: endST,
           ltDebt: endLT,
@@ -401,15 +390,11 @@ export default function StratFi() {
       };
     };
 
-    // Initial Inventory State (Empty for R1 start)
     const initialInvDetails = { A: {units:0, value:0}, B: {units:0, value:0}, C: {units:0, value:0} };
 
     const y1Start = { ...setup, limits: setup.limits }; 
-    // R1 Calculation
     const r1Res = calculateYear(y1Start, decisions.r1, 0, initialInvDetails);
-    // R2 Calculation (Pass R1 ending inventory)
     const r2Res = calculateYear(r1Res.nextStart, decisions.r2, r1Res.nextEfficiency, r1Res.inventoryDetails);
-    // R3 Calculation (Pass R2 ending inventory)
     const r3Res = calculateYear(r2Res.nextStart, decisions.r3, r2Res.nextEfficiency, r2Res.inventoryDetails);
 
     return { r1: r1Res, r2: r2Res, r3: r3Res };
@@ -417,12 +402,11 @@ export default function StratFi() {
 
   // --- GRID DATA STRUCTURE ---
   const gridRows = useMemo(() => {
-      // Define rows with section keys
       const rawRows = [
           // OPERATIONS
           { type: 'header', label: 'OPERATIONS', section: 'ops', icon: <Lightbulb className="w-4 h-4 text-amber-500 mr-2" />, hint: "Strategy Tip: Calculate Contribution Margin per Bottleneck Hour to set optimal mix." },
           { type: 'input', label: 'Sales Plan %', id: 'general.salesRate', format: 'number', suffix: '%', section: 'ops', tooltip: "Sales / Production. >100% sells from inventory. Capped by available stock." },
-          { type: 'output', label: 'Total Sold (Units)', id: 'totalUnitsSold', format: 'number', section: 'ops', highlight: false }, // NEW ROW
+          { type: 'output', label: 'Total Sold (Units)', id: 'totalUnitsSold', format: 'number', section: 'ops', highlight: false },
           { type: 'input', label: 'Prod A Qty', id: 'qty.A', format: 'number', section: 'ops' },
           { type: 'input', label: 'Prod A Price', id: 'price.A', format: 'currency', section: 'ops' },
           { type: 'input', label: 'Prod B Qty', id: 'qty.B', format: 'number', section: 'ops' },
@@ -474,7 +458,7 @@ export default function StratFi() {
           // FINANCIAL POSITION
           { type: 'header', label: 'FINANCIAL POSITION', section: 'pos' },
           { type: 'output', label: 'Cash', id: 'cash', format: 'currency', checkNegative: true, section: 'pos' },
-          { type: 'output', label: 'Inventory (Units)', id: 'inventoryUnits', format: 'number', section: 'pos', highlight: false }, // NEW ROW
+          { type: 'output', label: 'Inventory (Units)', id: 'inventoryUnits', format: 'number', section: 'pos', highlight: false },
           { type: 'output', label: 'Inventory ($)', id: 'inventory', format: 'currency', section: 'pos', tooltip: "Value of Unsold Finished Goods. Uses specific unit cost." },
           { type: 'output', label: 'Fixed Assets', id: 'fixedAssets', format: 'currency', section: 'pos', tooltip: "Book Value. Formula: Start Assets - Depreciation + New Inv." },
           { type: 'output', label: 'Total Assets', id: 'totalAssets', format: 'currency', highlight: true, section: 'pos' },
@@ -510,6 +494,106 @@ export default function StratFi() {
       return val.toLocaleString();
   };
 
+  // --- Ticket Generation ---
+  const ticketData = useMemo(() => {
+    if (!firmId) return "Please enter a Firm ID above first.";
+    
+    let txt = "";
+    let currentGroup = "";
+
+    gridRows.forEach(row => {
+        if (row.type === 'header') {
+            currentGroup = row.label;
+        } else if (row.type !== 'spacer') {
+            // Determine value for Round 1
+            let val = '';
+            if (row.type === 'input') {
+                const [cat, field] = row.id.split('.');
+                val = decisions.r1[cat][field];
+            } else if (row.type === 'displayLimit') {
+                val = simulation.r1.limits[row.id];
+            } else if (row.type === 'status') {
+                const status = simulation.r1.capacityCheck[row.id];
+                val = status.limit > 0 ? (status.used / status.limit) : 0; // Raw decimal
+            } else if (row.type === 'output') {
+                val = simulation.r1.financials[row.id];
+            }
+            
+            // Format: FirmID | Group | Item | Value
+            // Using raw numbers for easy excel pasting
+            txt += `${firmId}\t${currentGroup}\t${row.label}\t${val}\n`;
+        }
+    });
+    return txt;
+  }, [firmId, gridRows, decisions, simulation]);
+
+  const copyTicket = () => {
+      navigator.clipboard.writeText(ticketData);
+      alert("Ticket copied to clipboard!");
+  };
+
+  // --- CSV Download Function ---
+  const downloadCSV = () => {
+    const rows = [];
+    
+    // Initial Position Section
+    rows.push(["INITIAL POSITION"]);
+    rows.push(["Category", "Item", "Value"]);
+    rows.push(["Assets", "Cash", setup.cash]);
+    rows.push(["Assets", "Machines", setup.fixedAssets]);
+    rows.push(["Liabilities", "ST Debt", setup.stDebt]);
+    rows.push(["Liabilities", "LT Debt", setup.ltDebt]);
+    rows.push(["Equity", "Capital", setup.equity]);
+    rows.push(["Equity", "Retained Earnings", setup.retainedEarnings]);
+    rows.push(["Rates", "ST Rate %", setup.rates.st]);
+    rows.push(["Rates", "Tax Rate %", setup.rates.tax]);
+    rows.push(["Limits", "Machine Cap", setup.limits.machine]);
+    rows.push(["Limits", "Labour Cap", setup.limits.labour]);
+    rows.push([]);
+
+    // Strategic Planner Section
+    rows.push(["STRATEGIC PLANNER"]);
+    rows.push(["Metric", "Round 1 (Decision)", "Round 2 (Proj)", "Round 3 (Proj)"]);
+
+    gridRows.forEach(row => {
+        if (row.type === 'header') {
+            rows.push([row.label.toUpperCase()]);
+        } else if (row.type === 'spacer') {
+            rows.push([]);
+        } else {
+            const rowData = [row.label];
+            ['r1', 'r2', 'r3'].forEach(round => {
+                let val = '';
+                if (row.type === 'input') {
+                    const [cat, field] = row.id.split('.');
+                    val = decisions[round][cat][field];
+                } else if (row.type === 'displayLimit') {
+                    val = simulation[round].limits[row.id];
+                } else if (row.type === 'status') {
+                    const status = simulation[round].capacityCheck[row.id];
+                    val = status.limit > 0 ? (status.used / status.limit) : 0;
+                    val = (val * 100).toFixed(0) + '%';
+                } else if (row.type === 'output') {
+                    val = simulation[round].financials[row.id];
+                }
+                rowData.push(val);
+            });
+            rows.push(rowData);
+        }
+    });
+
+    const csvContent = rows.map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `StratFi_Projections_${firmId || 'Draft'}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 p-4">
       {/* GLOBAL STYLES FOR REMOVING INPUT SPINNERS */}
@@ -532,7 +616,7 @@ export default function StratFi() {
             StratFi <span className="text-sm font-normal text-slate-400">| Strategy at Altitude</span>
           </h1>
         </div>
-        <div className="flex bg-slate-100 p-1 rounded-lg">
+        <div className="flex bg-slate-100 p-1 rounded-lg gap-1">
             <button 
                 onClick={() => setView('grid')}
                 className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${view === 'grid' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
@@ -544,6 +628,13 @@ export default function StratFi() {
                 className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${view === 'charts' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
             >
                 <BarChart3 className="w-4 h-4" /> Analysis
+            </button>
+            <button 
+                onClick={downloadCSV}
+                className="px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all text-slate-500 hover:text-slate-700 hover:bg-slate-200"
+                title="Download Excel/CSV"
+            >
+                <Download className="w-4 h-4" />
             </button>
         </div>
       </header>
@@ -816,12 +907,12 @@ export default function StratFi() {
         {/* SUBMISSION MODAL */}
         {showSubmission && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
-                    <div className="bg-slate-900 p-4 flex justify-between items-center text-white">
+                <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh]">
+                    <div className="bg-slate-900 p-4 flex justify-between items-center text-white shrink-0">
                         <h3 className="font-bold flex items-center gap-2"><ClipboardList className="w-5 h-5"/> Submission Ticket</h3>
                         <button onClick={() => setShowSubmission(false)}><X className="w-5 h-5 text-slate-400 hover:text-white"/></button>
                     </div>
-                    <div className="p-6">
+                    <div className="p-6 overflow-y-auto flex-grow">
                         <div className="mb-6">
                             <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Firm ID</label>
                             <input 
@@ -833,25 +924,24 @@ export default function StratFi() {
                             />
                         </div>
                         
-                        <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 text-sm font-mono space-y-2">
-                            <div className="grid grid-cols-2 gap-4 border-b border-slate-200 pb-2 mb-2">
-                                <div><strong>Prod A:</strong> {decisions.r1.qty.A} @ ${decisions.r1.price.A}</div>
-                                <div><strong>Prod B:</strong> {decisions.r1.qty.B} @ ${decisions.r1.price.B}</div>
-                                <div><strong>Prod C:</strong> {decisions.r1.qty.C} @ ${decisions.r1.price.C}</div>
+                        <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-xs font-bold text-slate-500 uppercase">Data for Copy/Paste</span>
+                                <button onClick={copyTicket} className="text-xs flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-bold">
+                                    <Copy className="w-3 h-3" /> Copy to Clipboard
+                                </button>
                             </div>
-                            <div className="flex justify-between text-emerald-700">
-                                <span>Inv Machine: ${decisions.r1.inv.machine}</span>
-                                <span>Inv Labour: ${decisions.r1.inv.labour}</span>
-                            </div>
-                            <div className="flex justify-between text-indigo-700">
-                                <span>New ST: ${decisions.r1.finance.newST}</span>
-                                <span>New LT: ${decisions.r1.finance.newLT}</span>
-                            </div>
-                            <div className="flex justify-between text-indigo-700">
-                                <span>Div: ${decisions.r1.finance.div}</span>
-                            </div>
+                            <textarea 
+                                readOnly 
+                                value={ticketData}
+                                className="w-full h-64 font-mono text-xs p-2 border border-slate-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                onClick={(e) => e.target.select()}
+                            />
+                            <p className="text-center text-xs text-slate-400 mt-2">
+                                Format: Firm ID | Group | Item | Value <br/>
+                                Click text to select all, then Ctrl+C to copy.
+                            </p>
                         </div>
-                        <p className="text-center text-xs text-slate-400 mt-4">Copy these values to your Google Form.</p>
                     </div>
                 </div>
             </div>
