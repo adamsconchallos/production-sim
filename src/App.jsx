@@ -576,16 +576,16 @@ export default function StratFi() {
         const oldUnits = startInventoryDetails ? startInventoryDetails[p].units : 0;
         const oldTotalValue = startInventoryDetails ? startInventoryDetails[p].value : 0;
         const oldUnitCost = oldUnits > 0 ? oldTotalValue / oldUnits : 0;
+        const available = oldUnits + prodQty;
 
-        let demand = prodQty * salesRate; 
-        if (prodQty === 0 && oldUnits > 0 && salesRate > 0) {
-             demand = 0; 
-        }
+        // interpret salesRate as sell-through of available stock (cap at 100%)
+        const sellThrough = Math.min(salesRate, 1);
+        let demand = available * sellThrough;
 
-        if (demand > (oldUnits + prodQty)) {
-            salesCapped = true;
-            if (prodQty > 0) maxRatePossible = ((oldUnits + prodQty) / prodQty * 100).toFixed(0);
-            demand = oldUnits + prodQty;
+        // optional UI flag: if user typed >100%, show it is capped to 100%
+        if (salesRate > 1 && available > 0) {
+          salesCapped = true;
+          maxRatePossible = 100;
         }
 
         let soldFromOld = 0;
