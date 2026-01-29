@@ -20,10 +20,11 @@ import {
 
 // --- CONFIGURATION ---
 const SHEET_ID = "18UVJ7dFJkLbalRY1BrD3uVHQJTiXAe3XiUEDYpeDhZ0";
-// FIX: Use a CORS Proxy to bypass browser restrictions and redirects
+// FIX: Use a CORS Proxy to bypass browser restrictions
 const PROXY = "https://api.allorigins.win/raw?url=";
-const TARGET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
-const SHEET_CSV_URL = `${PROXY}${encodeURIComponent(TARGET_URL)}`;
+// We target the published CSV output
+const PUBLISHED_URL = `https://docs.google.com/spreadsheets/d/e/2PACX-1vSJM77z8w5otsNJ7G287thlhqCgdlLaexKnV6gzsiIrrok0dXp-NjFdp14eu4906arzwzxdbuObRhJF/pub?output=csv`;
+const SHEET_CSV_URL = `${PROXY}${encodeURIComponent(PUBLISHED_URL)}`;
 
 // --- CONSTANTS: Default Data (Fallback) ---
 const DEFAULT_SCENARIOS = {
@@ -313,7 +314,7 @@ const MarketBrief = ({ scenarios, onRefresh, loading, usingDefaults }) => {
           <thead className="bg-slate-100 text-slate-500 text-xs uppercase">
             <tr>
               <th className="p-4">Metric</th>
-              <th className="p-4">Current (Y0)</th>
+              <th className="p-4">Current ({data.history[data.history.length-1].year})</th>
               <th className="p-4 bg-indigo-50 text-indigo-700">Forecast Mean ({data.forecast.year})</th>
               <th className="p-4">Low Case (-2SD)</th>
               <th className="p-4">High Case (+2SD)</th>
@@ -395,7 +396,10 @@ export default function StratFi() {
           }
 
           const newScenarios = JSON.parse(JSON.stringify(DEFAULT_SCENARIOS)); 
-          ['A','B','C'].forEach(p => newScenarios[p].history = []);
+          ['A','B','C'].forEach(p => {
+              newScenarios[p].history = [];
+              newScenarios[p].forecast = null; // Clear to detect later
+          });
 
           let validRowsCount = 0;
 
@@ -409,17 +413,51 @@ export default function StratFi() {
 
               validRowsCount++;
 
-              if (type === 'History') {
+              const pSD = parseFloat(priceSD || "0");
+              const dSD = parseFloat(demandSD || "0");
+
+              // LOGIC UPDATE: Use SD presence OR "Forecast" label to identify the single forecast row
+              const isForecast = (pSD > 0 || dSD > 0) || (type && type.toLowerCase() === 'forecast');
+
+              if (isForecast) {
+                  newScenarios[prod].forecast = {
+                      year,
+                      price: { mean: parseFloat(price), sd: pSD },
+                      demand: { mean: parseFloat(demand), sd: dSD }
+                  };
+              } else {
                   newScenarios[prod].history.push({
                       year, 
                       price: parseFloat(price), 
                       demand: parseFloat(demand)
                   });
-              } else if (type === 'Forecast') {
-                  newScenarios[prod].forecast = {
-                      year,
-                      price: { mean: parseFloat(price), sd: parseFloat(priceSD||0) },
-                      demand: { mean: parseFloat(demand), sd: parseFloat(demandSD||0) }
+              }
+          });
+          
+          // SORTING UPDATE: Auto-sort history chronologically
+          ['A','B','C'].forEach(p => {
+              if (!newScenarios[p].history.length) return;
+              
+              newScenarios[p].history.sort((a, b) => {
+                  // Try to extract numbers from "Y-4", "Year 1", "2023"
+                  const numA = parseFloat(a.year.replace(/[^0-9.-]+/g, ""));
+                  const numB = parseFloat(b.year.replace(/[^0-9.-]+/g, ""));
+                  
+                  // If both have valid numbers, sort numerically
+                  if (!isNaN(numA) && !isNaN(numB)) {
+                      return numA - numB; 
+                  }
+                  // Fallback: String sort
+                  return a.year.localeCompare(b.year, undefined, { numeric: true });
+              });
+
+              // Safety check: if no forecast found, use last history + dummy SD
+              if (!newScenarios[p].forecast) {
+                  const lastHist = newScenarios[p].history[newScenarios[p].history.length - 1];
+                  newScenarios[p].forecast = {
+                      year: "Next",
+                      price: { mean: lastHist.price, sd: 0 },
+                      demand: { mean: lastHist.demand, sd: 0 }
                   };
               }
           });
