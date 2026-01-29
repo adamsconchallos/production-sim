@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Calculator, 
-  Settings,
+  Settings, 
   ClipboardList,
   X,
   ChevronDown,
@@ -13,8 +13,65 @@ import {
   Lightbulb,
   Download,
   Copy,
-  ExternalLink
+  ExternalLink,
+  TrendingUp,
+  RefreshCw 
 } from 'lucide-react';
+
+// --- CONFIGURATION ---
+// The Google Sheet ID provided
+const SHEET_ID = "18UVJ7dFJkLbalRY1BrD3uVHQJTiXAe3XiUEDYpeDhZ0";
+// Construct the CSV export URL (using gviz for better reliability with shared links)
+const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
+
+// --- CONSTANTS: Default Data (Fallback) ---
+const DEFAULT_SCENARIOS = {
+  A: {
+    name: "Product A (Mass Market)",
+    history: [
+      { year: "Y-4", price: 26, demand: 11000 },
+      { year: "Y-3", price: 27, demand: 11500 },
+      { year: "Y-2", price: 28, demand: 12000 },
+      { year: "Y-1", price: 30, demand: 12500 },
+      { year: "Y0",  price: 32, demand: 13000 }
+    ],
+    forecast: {
+      year: "Y1",
+      price: { mean: 33.50, sd: 1.5 },
+      demand: { mean: 13500, sd: 800 }
+    }
+  },
+  B: {
+    name: "Product B (Specialized)",
+    history: [
+      { year: "Y-4", price: 42, demand: 7000 },
+      { year: "Y-3", price: 40, demand: 7500 },
+      { year: "Y-2", price: 38, demand: 8000 },
+      { year: "Y-1", price: 36, demand: 8500 },
+      { year: "Y0",  price: 35, demand: 9000 }
+    ],
+    forecast: {
+      year: "Y1",
+      price: { mean: 34.00, sd: 2.0 },
+      demand: { mean: 9500, sd: 1200 }
+    }
+  },
+  C: {
+    name: "Product C (Premium/Niche)",
+    history: [
+      { year: "Y-4", price: 38, demand: 2500 },
+      { year: "Y-3", price: 39, demand: 2800 },
+      { year: "Y-2", price: 40, demand: 3000 },
+      { year: "Y-1", price: 42, demand: 3200 },
+      { year: "Y0",  price: 45, demand: 3500 }
+    ],
+    forecast: {
+      year: "Y1",
+      price: { mean: 46.50, sd: 3.0 },
+      demand: { mean: 3800, sd: 400 }
+    }
+  }
+};
 
 // --- UI Components ---
 
@@ -61,7 +118,7 @@ const InputCell = ({ value, onChange, prefix = "", suffix = "", className = "", 
   </div>
 );
 
-// --- Simple Chart Component (SVG) ---
+// --- SIMPLE CHART COMPONENT (For Analysis Tab) ---
 const SimpleChart = ({ title, data, dataKey, color = "#4f46e5", format = "currency" }) => {
   const height = 150;
   const width = 300;
@@ -70,7 +127,7 @@ const SimpleChart = ({ title, data, dataKey, color = "#4f46e5", format = "curren
   const values = data.map(d => d[dataKey]);
   const min = Math.min(0, ...values);
   const max = Math.max(...values);
-  const range = (max - min) || 1; // avoid divide by zero
+  const range = (max - min) || 1; 
 
   const getY = (val) => {
     return height - padding - ((val - min) / range) * (height - (padding * 2));
@@ -87,10 +144,7 @@ const SimpleChart = ({ title, data, dataKey, color = "#4f46e5", format = "curren
       <h4 className="text-xs font-bold text-slate-500 uppercase mb-4">{title}</h4>
       <div className="flex justify-center">
         <svg width={width} height={height} className="overflow-visible">
-          {/* Axis Lines */}
           <line x1={padding} y1={getY(0)} x2={width-padding} y2={getY(0)} stroke="#e2e8f0" strokeWidth="1" />
-          
-          {/* Line Path */}
           <polyline
             points={data.map((d, i) => {
               const x = padding + (i * ((width - (padding*2)) / (data.length - 1)));
@@ -100,8 +154,6 @@ const SimpleChart = ({ title, data, dataKey, color = "#4f46e5", format = "curren
             stroke={color}
             strokeWidth="2"
           />
-
-          {/* Dots & Labels */}
           {data.map((d, i) => {
             const x = padding + (i * ((width - (padding*2)) / (data.length - 1)));
             const y = getY(d[dataKey]);
@@ -123,21 +175,182 @@ const SimpleChart = ({ title, data, dataKey, color = "#4f46e5", format = "curren
   );
 };
 
+// --- FAN CHART COMPONENT (For Market Brief Tab) ---
+const FanChart = ({ title, data, type = 'price', color = "#4f46e5" }) => {
+  const height = 220;
+  const width = 400;
+  const padding = 40;
+
+  // Extract Data
+  const history = data.history || [];
+  const forecast = data.forecast || { year: '?', price: {mean:0, sd:0}, demand: {mean:0, sd:0} };
+  const fData = forecast[type] || { mean: 0, sd: 0 };
+  
+  // Combine for scaling
+  const allValues = [
+    ...history.map(d => d[type]),
+    fData.mean + (fData.sd * 2),
+    fData.mean - (fData.sd * 2)
+  ];
+  
+  const minVal = Math.min(...allValues) * 0.95;
+  const maxVal = Math.max(...allValues) * 1.05;
+  const range = (maxVal - minVal) || 1;
+
+  const getX = (index, totalPoints) => padding + (index * ((width - (padding*2)) / (totalPoints - 1)));
+  const getY = (val) => height - padding - ((val - minVal) / range) * (height - (padding * 2));
+
+  const totalPoints = history.length + 1;
+  const lastHistIndex = history.length - 1;
+  
+  if (history.length === 0) return <div>No Data</div>;
+
+  // 1. History Line Path
+  let histPath = "";
+  history.forEach((d, i) => {
+    histPath += `${i === 0 ? 'M' : 'L'} ${getX(i, totalPoints)} ${getY(d[type])} `;
+  });
+
+  // 2. Forecast Cone
+  const startX = getX(lastHistIndex, totalPoints);
+  const startY = getY(history[lastHistIndex][type]);
+  const endX = getX(lastHistIndex + 1, totalPoints);
+  
+  const meanY = getY(fData.mean);
+  const sd1UpY = getY(fData.mean + fData.sd);
+  const sd1DownY = getY(fData.mean - fData.sd);
+  const sd2UpY = getY(fData.mean + (fData.sd * 2));
+  const sd2DownY = getY(fData.mean - (fData.sd * 2));
+
+  const formatVal = (v) => type === 'price' ? `$${v.toFixed(2)}` : v.toLocaleString();
+
+  return (
+    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col h-full">
+      <h4 className="text-xs font-bold text-slate-500 uppercase mb-4 flex justify-between">
+        <span>{title}</span>
+        <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded text-[10px]">Forecast {forecast.year}</span>
+      </h4>
+      <div className="flex-grow flex justify-center items-center">
+        <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+          <line x1={padding} y1={height-padding} x2={width-padding} y2={height-padding} stroke="#e2e8f0" strokeWidth="1" />
+          <line x1={padding} y1={padding} x2={padding} y2={height-padding} stroke="#e2e8f0" strokeWidth="1" />
+          
+          <path d={`M ${startX} ${startY} L ${endX} ${sd2UpY} L ${endX} ${sd2DownY} Z`} fill={color} opacity="0.15" />
+          <path d={`M ${startX} ${startY} L ${endX} ${sd1UpY} L ${endX} ${sd1DownY} Z`} fill={color} opacity="0.3" />
+          <path d={histPath} fill="none" stroke={color} strokeWidth="2.5" />
+          <line x1={startX} y1={startY} x2={endX} y2={meanY} stroke={color} strokeWidth="2" strokeDasharray="4,4" />
+
+          {history.map((d, i) => (
+            <g key={i}>
+              <circle cx={getX(i, totalPoints)} cy={getY(d[type])} r="3" fill="white" stroke={color} strokeWidth="2" />
+              <text x={getX(i, totalPoints)} y={height - padding + 15} textAnchor="middle" fontSize="10" fill="#94a3b8">{d.year}</text>
+            </g>
+          ))}
+          
+          <text x={endX} y={height - padding + 15} textAnchor="middle" fontSize="10" fill="#94a3b8" fontWeight="bold">{forecast.year}</text>
+          <text x={padding - 5} y={getY(maxVal)} textAnchor="end" fontSize="10" fill="#94a3b8">{formatVal(maxVal)}</text>
+          <text x={padding - 5} y={getY(minVal)} textAnchor="end" fontSize="10" fill="#94a3b8">{formatVal(minVal)}</text>
+
+          <text x={endX + 5} y={sd2UpY} fontSize="9" fill={color} alignmentBaseline="middle">High (2SD)</text>
+          <text x={endX + 5} y={meanY} fontSize="9" fontWeight="bold" fill={color} alignmentBaseline="middle">Mean</text>
+          <text x={endX + 5} y={sd2DownY} fontSize="9" fill={color} alignmentBaseline="middle">Low (2SD)</text>
+        </svg>
+      </div>
+    </div>
+  );
+};
+
+// --- MARKET BRIEF VIEW COMPONENT ---
+const MarketBrief = ({ scenarios, onRefresh, loading }) => {
+  const [activeTab, setActiveTab] = useState("A");
+  const data = scenarios[activeTab];
+
+  return (
+    <div className="space-y-6">
+      {/* Product Tabs */}
+      <div className="flex justify-between items-center border-b border-slate-200 pb-1">
+        <div className="flex space-x-2">
+            {Object.keys(scenarios).map(key => (
+            <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                className={`px-4 py-2 rounded-t-lg text-sm font-bold transition-colors ${activeTab === key ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+            >
+                {scenarios[key].name}
+            </button>
+            ))}
+        </div>
+        <button 
+            onClick={onRefresh} 
+            className={`flex items-center gap-1 text-xs transition-colors mr-2 px-3 py-1 rounded border ${loading ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-wait' : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50'}`}
+            title="Fetch latest market data"
+            disabled={loading}
+        >
+            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> 
+            {loading ? "Loading..." : "Refresh Data"}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <FanChart title="Price Forecast ($)" data={data} type="price" color="#0ea5e9" />
+        <FanChart title="Total Market Demand (Units)" data={data} type="demand" color="#8b5cf6" />
+      </div>
+
+      <Card className="p-0">
+        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+          <h3 className="font-bold text-slate-700">Forecast Summary Table</h3>
+          <span className="text-xs text-slate-400 italic">Confidence Level: 95% (2SD)</span>
+        </div>
+        <table className="w-full text-sm text-left">
+          <thead className="bg-slate-100 text-slate-500 text-xs uppercase">
+            <tr>
+              <th className="p-4">Metric</th>
+              <th className="p-4">Current (Y0)</th>
+              <th className="p-4 bg-indigo-50 text-indigo-700">Forecast Mean ({data.forecast.year})</th>
+              <th className="p-4">Low Case (-2SD)</th>
+              <th className="p-4">High Case (+2SD)</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            <tr>
+              <td className="p-4 font-bold text-slate-700">Market Price</td>
+              <td className="p-4">${data.history[data.history.length-1].price.toFixed(2)}</td>
+              <td className="p-4 bg-indigo-50 font-bold text-indigo-700">${data.forecast.price.mean.toFixed(2)}</td>
+              <td className="p-4 text-red-600">${(data.forecast.price.mean - (2 * data.forecast.price.sd)).toFixed(2)}</td>
+              <td className="p-4 text-emerald-600">${(data.forecast.price.mean + (2 * data.forecast.price.sd)).toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td className="p-4 font-bold text-slate-700">Total Demand</td>
+              <td className="p-4">{data.history[data.history.length-1].demand.toLocaleString()}</td>
+              <td className="p-4 bg-indigo-50 font-bold text-indigo-700">{data.forecast.demand.mean.toLocaleString()}</td>
+              <td className="p-4 text-slate-500">{(data.forecast.demand.mean - (2 * data.forecast.demand.sd)).toLocaleString()}</td>
+              <td className="p-4 text-slate-500">{(data.forecast.demand.mean + (2 * data.forecast.demand.sd)).toLocaleString()}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div className="p-4 bg-amber-50 text-amber-800 text-xs border-t border-amber-100">
+          <strong>Strategic Hint:</strong> The "Forecast Mean" assumes the industry supply grows at a historical average rate. 
+          If you believe competitors will oversupply (aggressive expansion), expect prices to trend toward the <strong>Low Case</strong>. 
+          If supply is constrained, prices may hit the <strong>High Case</strong>.
+        </div>
+      </Card>
+    </div>
+  );
+};
+
 // --- Constants & Helper Functions ---
 
 const DEPRECIATION_RATE = 0.05; 
-const CAPACITY_PER_1000_MACHINE = 50; // Hours
-const CAPACITY_PER_1000_LABOUR = 100; // Hours
-const EFFICIENCY_GAIN_PER_10K_INV = 0.01; // 1% cost reduction per $10k invested
+const CAPACITY_PER_1000_MACHINE = 50; 
+const CAPACITY_PER_1000_LABOUR = 100; 
+const EFFICIENCY_GAIN_PER_10K_INV = 0.01; 
 
-// Recipe (Standard Resource Requirements per Unit)
 const RECIPE = {
   machine: { A: 2.0, B: 1.5, C: 1.0 },
   labour: { A: 1.0, B: 1.5, C: 2.0 },
   material: { A: 1.0, B: 1.0, C: 1.0 }
 };
 
-// Standard Costs (Base Level)
 const BASE_COSTS = {
   machine: 10,
   labour: 8,
@@ -146,15 +359,78 @@ const BASE_COSTS = {
 
 export default function StratFi() {
   
-  // --- EFFECT: Set Title ---
   useEffect(() => {
     document.title = "StratFi - Strategy at Altitude";
   }, []);
 
-  // --- STATE: View Mode ---
   const [view, setView] = useState('grid'); 
+  const [showSetup, setShowSetup] = useState(true);
+  const [scenarios, setScenarios] = useState(DEFAULT_SCENARIOS);
+  const [isLoadingData, setIsLoadingData] = useState(false);
 
-  // --- STATE: Initial Setup ---
+  // --- DATA FETCHING ---
+  const fetchMarketData = async () => {
+      setIsLoadingData(true);
+      try {
+          const response = await fetch(SHEET_CSV_URL);
+          const text = await response.text();
+          
+          // Google Sheets CSV parsing
+          // We expect headers roughly: "Product,Type,Year,Price,Demand,PriceSD,DemandSD"
+          // We will try to be robust about quoting
+          const rows = text.split('\n').slice(1); // skip header
+          
+          if (rows.length < 3) {
+              console.warn("Sheet data seems empty, using defaults.");
+              setIsLoadingData(false);
+              return;
+          }
+
+          const newScenarios = JSON.parse(JSON.stringify(DEFAULT_SCENARIOS)); 
+          
+          // Reset history to avoid duplicates
+          ['A','B','C'].forEach(p => newScenarios[p].history = []);
+
+          rows.forEach(row => {
+              // Simple CSV split (assuming no commas in fields for now)
+              // Google CSV export wraps strings in quotes, we remove them
+              const cols = row.split(',').map(c => c?.replace(/^"|"$/g, '').trim());
+              
+              if (cols.length < 5) return;
+              const [prod, type, year, price, demand, priceSD, demandSD] = cols;
+              
+              if (!newScenarios[prod]) return;
+
+              if (type === 'History') {
+                  newScenarios[prod].history.push({
+                      year, 
+                      price: parseFloat(price), 
+                      demand: parseFloat(demand)
+                  });
+              } else if (type === 'Forecast') {
+                  newScenarios[prod].forecast = {
+                      year,
+                      price: { mean: parseFloat(price), sd: parseFloat(priceSD||0) },
+                      demand: { mean: parseFloat(demand), sd: parseFloat(demandSD||0) }
+                  };
+              }
+          });
+          
+          setScenarios(newScenarios);
+      } catch (e) {
+          console.error("Failed to load market data:", e);
+          // Keep defaults if fail
+      } finally {
+          setIsLoadingData(false);
+      }
+  };
+
+  // Fetch on mount
+  useEffect(() => {
+      fetchMarketData();
+  }, []);
+
+  // --- Setup State ---
   const [setup, setSetup] = useState({
     cash: 10000,
     inventory: 0,    
@@ -167,7 +443,7 @@ export default function StratFi() {
     limits: { machine: 1000, labour: 1000, material: 500 }
   });
 
-  // --- STATE: Decisions (Inputs) ---
+  // --- Decisions State ---
   const [decisions, setDecisions] = useState({
     r1: { 
       general: { salesRate: 100 }, 
@@ -191,7 +467,6 @@ export default function StratFi() {
 
   const [firmId, setFirmId] = useState("");
   const [showSubmission, setShowSubmission] = useState(false);
-  const [showSetup, setShowSetup] = useState(true);
 
   // State for collapsible sections
   const [collapsed, setCollapsed] = useState({
@@ -619,6 +894,12 @@ export default function StratFi() {
         </div>
         <div className="flex bg-slate-100 p-1 rounded-lg gap-1">
             <button 
+                onClick={() => setView('market')}
+                className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${view === 'market' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+                <TrendingUp className="w-4 h-4" /> Brief
+            </button>
+            <button 
                 onClick={() => setView('grid')}
                 className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${view === 'grid' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
             >
@@ -637,15 +918,28 @@ export default function StratFi() {
             >
                 <Download className="w-4 h-4" />
             </button>
+            <button 
+                onClick={() => setShowSetup(!showSetup)}
+                className={`p-2 rounded-md transition-all ${showSetup ? 'bg-slate-200 text-slate-700' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-200'}`}
+                title="Initial Position Settings"
+            >
+                <Settings className="w-4 h-4" />
+            </button>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto space-y-6">
         
+        {/* VIEW: MARKET BRIEF */}
+        {view === 'market' && (
+            <MarketBrief scenarios={scenarios} onRefresh={fetchMarketData} loading={isLoadingData} />
+        )}
+
         {/* VIEW: GRID (PLANNER) */}
         {view === 'grid' && (
           <>
             {/* 1. INITIAL SETUP */}
+            {showSetup && (
             <Card>
                 <div 
                     className="px-6 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50 cursor-pointer hover:bg-slate-100"
@@ -654,57 +948,57 @@ export default function StratFi() {
                     <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
                         <Settings className="w-4 h-4" /> 1. Initial Position (From Instructor Report)
                     </div>
-                    <div className="text-xs text-indigo-600 font-bold">{showSetup ? "Collapse" : "Expand"}</div>
+                    <div className="text-xs text-indigo-600 font-bold">Collapse</div>
                 </div>
-                {showSetup && (
-                    <div className="p-6">
-                        {/* WARNING BOX */}
-                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6 flex gap-3 text-sm text-amber-900">
-                            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
-                            <div>
-                                <strong className="block text-amber-800">Confidential Strategy Information</strong>
-                                Enter the starting values from your specific Company Brief here. 
-                                Do not share this specific starting position with competitors. 
-                                <br/><span className="text-amber-700 mt-1 block">Game Timing: Decisions are made annually. Projections (R2, R3) assume similar conditions unless edited.</span>
+                
+                <div className="p-6">
+                    {/* WARNING BOX */}
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6 flex gap-3 text-sm text-amber-900">
+                        <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                        <div>
+                            <strong className="block text-amber-800">Confidential Strategy Information</strong>
+                            Enter the starting values from your specific Company Brief here. 
+                            Do not share this specific starting position with competitors. 
+                            <br/><span className="text-amber-700 mt-1 block">Game Timing: Decisions are made annually. Projections (R2, R3) assume similar conditions unless edited.</span>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-sm">
+                        {/* Setup Inputs */}
+                        <div>
+                            <span className="text-xs font-bold text-slate-400 uppercase">Assets</span>
+                            <div className="mt-2 space-y-1">
+                                <label className="flex justify-between items-center"><span>Cash</span> <input type="number" className="w-20 border rounded px-1" value={setup.cash} onChange={e => setSetup({...setup, cash: parseFloat(e.target.value)||0})} /></label>
+                                <label className="flex justify-between items-center"><span>Machines</span> <input type="number" className="w-20 border rounded px-1" value={setup.fixedAssets} onChange={e => setSetup({...setup, fixedAssets: parseFloat(e.target.value)||0})} /></label>
                             </div>
                         </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-sm">
-                            {/* Setup Inputs */}
-                            <div>
-                                <span className="text-xs font-bold text-slate-400 uppercase">Assets</span>
-                                <div className="mt-2 space-y-1">
-                                    <label className="flex justify-between items-center"><span>Cash</span> <input type="number" className="w-20 border rounded px-1" value={setup.cash} onChange={e => setSetup({...setup, cash: parseFloat(e.target.value)||0})} /></label>
-                                    <label className="flex justify-between items-center"><span>Machines</span> <input type="number" className="w-20 border rounded px-1" value={setup.fixedAssets} onChange={e => setSetup({...setup, fixedAssets: parseFloat(e.target.value)||0})} /></label>
-                                </div>
+                        <div>
+                            <span className="text-xs font-bold text-slate-400 uppercase">Liabilities</span>
+                            <div className="mt-2 space-y-1">
+                                <label className="flex justify-between items-center"><span>ST Debt</span> <input type="number" className="w-20 border rounded px-1" value={setup.stDebt} onChange={e => setSetup({...setup, stDebt: parseFloat(e.target.value)||0})} /></label>
+                                <label className="flex justify-between items-center"><span>LT Debt</span> <input type="number" className="w-20 border rounded px-1" value={setup.ltDebt} onChange={e => setSetup({...setup, ltDebt: parseFloat(e.target.value)||0})} /></label>
                             </div>
-                            <div>
-                                <span className="text-xs font-bold text-slate-400 uppercase">Liabilities</span>
-                                <div className="mt-2 space-y-1">
-                                    <label className="flex justify-between items-center"><span>ST Debt</span> <input type="number" className="w-20 border rounded px-1" value={setup.stDebt} onChange={e => setSetup({...setup, stDebt: parseFloat(e.target.value)||0})} /></label>
-                                    <label className="flex justify-between items-center"><span>LT Debt</span> <input type="number" className="w-20 border rounded px-1" value={setup.ltDebt} onChange={e => setSetup({...setup, ltDebt: parseFloat(e.target.value)||0})} /></label>
-                                </div>
+                        </div>
+                        <div>
+                            <span className="text-xs font-bold text-slate-400 uppercase">Equity</span>
+                            <div className="mt-2 space-y-1">
+                                <label className="flex justify-between items-center"><span>Capital</span> <input type="number" className="w-20 border rounded px-1" value={setup.equity} onChange={e => setSetup({...setup, equity: parseFloat(e.target.value)||0})} /></label>
+                                <label className="flex justify-between items-center"><span>Ret. Earn</span> <input type="number" className="w-20 border rounded px-1" value={setup.retainedEarnings} onChange={e => setSetup({...setup, retainedEarnings: parseFloat(e.target.value)||0})} /></label>
                             </div>
-                            <div>
-                                <span className="text-xs font-bold text-slate-400 uppercase">Equity</span>
-                                <div className="mt-2 space-y-1">
-                                    <label className="flex justify-between items-center"><span>Capital</span> <input type="number" className="w-20 border rounded px-1" value={setup.equity} onChange={e => setSetup({...setup, equity: parseFloat(e.target.value)||0})} /></label>
-                                    <label className="flex justify-between items-center"><span>Ret. Earn</span> <input type="number" className="w-20 border rounded px-1" value={setup.retainedEarnings} onChange={e => setSetup({...setup, retainedEarnings: parseFloat(e.target.value)||0})} /></label>
-                                </div>
-                            </div>
-                            <div>
-                                <span className="text-xs font-bold text-slate-400 uppercase">Rates & Limits</span>
-                                <div className="mt-2 space-y-1">
-                                    <label className="flex justify-between items-center"><span>ST Rate %</span> <input type="number" className="w-16 border rounded px-1" value={setup.rates.st} onChange={e => setSetup({...setup, rates: {...setup.rates, st: parseFloat(e.target.value)||0}})} /></label>
-                                    <label className="flex justify-between items-center"><span>Tax Rate %</span> <input type="number" className="w-16 border rounded px-1" value={setup.rates.tax} onChange={e => setSetup({...setup, rates: {...setup.rates, tax: parseFloat(e.target.value)||0}})} /></label>
-                                    <label className="flex justify-between items-center"><span>Mach Cap</span> <input type="number" className="w-16 border rounded px-1" value={setup.limits.machine} onChange={e => setSetup({...setup, limits: {...setup.limits, machine: parseFloat(e.target.value)||0}})} /></label>
-                                    <label className="flex justify-between items-center"><span>Lab Cap</span> <input type="number" className="w-16 border rounded px-1" value={setup.limits.labour} onChange={e => setSetup({...setup, limits: {...setup.limits, labour: parseFloat(e.target.value)||0}})} /></label>
-                                </div>
+                        </div>
+                        <div>
+                            <span className="text-xs font-bold text-slate-400 uppercase">Rates & Limits</span>
+                            <div className="mt-2 space-y-1">
+                                <label className="flex justify-between items-center"><span>ST Rate %</span> <input type="number" className="w-16 border rounded px-1" value={setup.rates.st} onChange={e => setSetup({...setup, rates: {...setup.rates, st: parseFloat(e.target.value)||0}})} /></label>
+                                <label className="flex justify-between items-center"><span>Tax Rate %</span> <input type="number" className="w-16 border rounded px-1" value={setup.rates.tax} onChange={e => setSetup({...setup, rates: {...setup.rates, tax: parseFloat(e.target.value)||0}})} /></label>
+                                <label className="flex justify-between items-center"><span>Mach Cap</span> <input type="number" className="w-16 border rounded px-1" value={setup.limits.machine} onChange={e => setSetup({...setup, limits: {...setup.limits, machine: parseFloat(e.target.value)||0}})} /></label>
+                                <label className="flex justify-between items-center"><span>Lab Cap</span> <input type="number" className="w-16 border rounded px-1" value={setup.limits.labour} onChange={e => setSetup({...setup, limits: {...setup.limits, labour: parseFloat(e.target.value)||0}})} /></label>
                             </div>
                         </div>
                     </div>
-                )}
+                </div>
             </Card>
+            )}
 
             {/* 2. THE MASTER GRID */}
             <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
