@@ -18,12 +18,13 @@ import {
   RefreshCw 
 } from 'lucide-react';
 
+
 // --- CONFIGURATION ---
-const SHEET_ID = "18UVJ7dFJkLbalRY1BrD3uVHQJTiXAe3XiUEDYpeDhZ0";
+// We use the "Published to Web" ID (2PACX...) not the editing ID.
+// IMPORTANT: Changed '/pubhtml' to '/pub?output=csv' to get raw data instead of HTML.
+const PUBLISHED_URL = `https://docs.google.com/spreadsheets/d/e/2PACX-1vSJM77z8w5otsNJ7G287thlhqCgdlLaexKnV6gzsiIrrok0dXp-NjFdp14eu4906arzwzxdbuObRhJF/pub?gid=0&single=true&output=csv`;
 // FIX: Use a CORS Proxy to bypass browser restrictions
 const PROXY = "https://api.allorigins.win/raw?url=";
-// We target the published CSV output
-const PUBLISHED_URL = `https://docs.google.com/spreadsheets/d/e/2PACX-1vSJM77z8w5otsNJ7G287thlhqCgdlLaexKnV6gzsiIrrok0dXp-NjFdp14eu4906arzwzxdbuObRhJF/pub?gid=0&single=true&output=csv`;
 const SHEET_CSV_URL = `${PROXY}${encodeURIComponent(PUBLISHED_URL)}`;
 
 // --- CONSTANTS: Default Data (Fallback) ---
