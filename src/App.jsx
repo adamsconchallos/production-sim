@@ -19,10 +19,11 @@ import {
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
-// The Google Sheet ID provided
 const SHEET_ID = "18UVJ7dFJkLbalRY1BrD3uVHQJTiXAe3XiUEDYpeDhZ0";
-// Construct the CSV export URL (using gviz for better reliability with shared links)
-const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
+// FIX: Use a CORS Proxy to bypass browser restrictions and redirects
+const PROXY = "https://api.allorigins.win/raw?url=";
+const TARGET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
+const SHEET_CSV_URL = `${PROXY}${encodeURIComponent(TARGET_URL)}`;
 
 // --- CONSTANTS: Default Data (Fallback) ---
 const DEFAULT_SCENARIOS = {
@@ -261,7 +262,7 @@ const FanChart = ({ title, data, type = 'price', color = "#4f46e5" }) => {
 };
 
 // --- MARKET BRIEF VIEW COMPONENT ---
-const MarketBrief = ({ scenarios, onRefresh, loading }) => {
+const MarketBrief = ({ scenarios, onRefresh, loading, usingDefaults }) => {
   const [activeTab, setActiveTab] = useState("A");
   const data = scenarios[activeTab];
 
@@ -280,15 +281,22 @@ const MarketBrief = ({ scenarios, onRefresh, loading }) => {
             </button>
             ))}
         </div>
-        <button 
-            onClick={onRefresh} 
-            className={`flex items-center gap-1 text-xs transition-colors mr-2 px-3 py-1 rounded border ${loading ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-wait' : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50'}`}
-            title="Fetch latest market data"
-            disabled={loading}
-        >
-            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> 
-            {loading ? "Loading..." : "Refresh Data"}
-        </button>
+        <div className="flex items-center gap-2">
+            {usingDefaults && (
+                <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-1 rounded flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> Using Default Data
+                </span>
+            )}
+            <button 
+                onClick={onRefresh} 
+                className={`flex items-center gap-1 text-xs transition-colors mr-2 px-3 py-1 rounded border ${loading ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-wait' : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50'}`}
+                title="Fetch latest market data"
+                disabled={loading}
+            >
+                <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> 
+                {loading ? "Loading..." : "Refresh Data"}
+            </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -367,39 +375,39 @@ export default function StratFi() {
   const [showSetup, setShowSetup] = useState(true);
   const [scenarios, setScenarios] = useState(DEFAULT_SCENARIOS);
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const [usingDefaults, setUsingDefaults] = useState(false);
 
   // --- DATA FETCHING ---
   const fetchMarketData = async () => {
       setIsLoadingData(true);
+      setUsingDefaults(false);
       try {
           const response = await fetch(SHEET_CSV_URL);
+          if (!response.ok) throw new Error("Network response was not ok");
           const text = await response.text();
           
-          // Google Sheets CSV parsing
-          // We expect headers roughly: "Product,Type,Year,Price,Demand,PriceSD,DemandSD"
-          // We will try to be robust about quoting
-          const rows = text.split('\n').slice(1); // skip header
+          // Basic CSV Parse (Robust for AllOrigins response)
+          // Rows might contain \r\n
+          const rows = text.split(/\r?\n/).slice(1); // skip header
           
           if (rows.length < 3) {
-              console.warn("Sheet data seems empty, using defaults.");
-              setIsLoadingData(false);
-              return;
+              throw new Error("Empty data received");
           }
 
           const newScenarios = JSON.parse(JSON.stringify(DEFAULT_SCENARIOS)); 
-          
-          // Reset history to avoid duplicates
           ['A','B','C'].forEach(p => newScenarios[p].history = []);
 
+          let validRowsCount = 0;
+
           rows.forEach(row => {
-              // Simple CSV split (assuming no commas in fields for now)
-              // Google CSV export wraps strings in quotes, we remove them
-              const cols = row.split(',').map(c => c?.replace(/^"|"$/g, '').trim());
-              
+              // CSV split handling simple commas
+              const cols = row.split(',').map(c => c ? c.replace(/^"|"$/g, '').trim() : '');
               if (cols.length < 5) return;
-              const [prod, type, year, price, demand, priceSD, demandSD] = cols;
               
+              const [prod, type, year, price, demand, priceSD, demandSD] = cols;
               if (!newScenarios[prod]) return;
+
+              validRowsCount++;
 
               if (type === 'History') {
                   newScenarios[prod].history.push({
@@ -416,10 +424,16 @@ export default function StratFi() {
               }
           });
           
-          setScenarios(newScenarios);
+          if (validRowsCount > 0) {
+            setScenarios(newScenarios);
+          } else {
+            throw new Error("No valid rows parsed");
+          }
+
       } catch (e) {
-          console.error("Failed to load market data:", e);
-          // Keep defaults if fail
+          console.warn("Failed to load market data, using defaults:", e);
+          setUsingDefaults(true);
+          setScenarios(DEFAULT_SCENARIOS);
       } finally {
           setIsLoadingData(false);
       }
@@ -932,7 +946,7 @@ export default function StratFi() {
         
         {/* VIEW: MARKET BRIEF */}
         {view === 'market' && (
-            <MarketBrief scenarios={scenarios} onRefresh={fetchMarketData} loading={isLoadingData} />
+            <MarketBrief scenarios={scenarios} onRefresh={fetchMarketData} loading={isLoadingData} usingDefaults={usingDefaults} />
         )}
 
         {/* VIEW: GRID (PLANNER) */}
