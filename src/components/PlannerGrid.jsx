@@ -9,14 +9,16 @@ const PlannerGrid = ({ decisions, simulation, updateVal, collapsed, toggleSectio
     const rawRows = [
       // OPERATIONS
       { type: 'header', label: 'OPERATIONS', section: 'ops', icon: <Lightbulb className="w-4 h-4 text-amber-500 mr-2" />, hint: "Strategy Tip: Calculate Contribution Margin per Bottleneck Hour to set optimal mix." },
-      { type: 'input', label: 'Sales Plan %', id: 'general.salesRate', format: 'number', suffix: '%', section: 'ops', tooltip: "Sales / Production. >100% sells from inventory. Capped by available stock." },
-      { type: 'output', label: 'Total Sold (Units)', id: 'totalUnitsSold', format: 'number', section: 'ops', highlight: false },
       { type: 'input', label: 'Prod A Qty', id: 'qty.A', format: 'number', section: 'ops' },
       { type: 'input', label: 'Prod A Price', id: 'price.A', format: 'currency', section: 'ops' },
+      { type: 'input', label: 'Sell A (Units)', id: 'sales.A', format: 'number', section: 'ops', tooltip: "Units of Product A to sell. Capped to available stock (production + inventory)." },
       { type: 'input', label: 'Prod B Qty', id: 'qty.B', format: 'number', section: 'ops' },
       { type: 'input', label: 'Prod B Price', id: 'price.B', format: 'currency', section: 'ops' },
+      { type: 'input', label: 'Sell B (Units)', id: 'sales.B', format: 'number', section: 'ops', tooltip: "Units of Product B to sell. Capped to available stock (production + inventory)." },
       { type: 'input', label: 'Prod C Qty', id: 'qty.C', format: 'number', section: 'ops' },
       { type: 'input', label: 'Prod C Price', id: 'price.C', format: 'currency', section: 'ops' },
+      { type: 'input', label: 'Sell C (Units)', id: 'sales.C', format: 'number', section: 'ops', tooltip: "Units of Product C to sell. Capped to available stock (production + inventory)." },
+      { type: 'output', label: 'Total Sold (Units)', id: 'totalUnitsSold', format: 'number', section: 'ops', highlight: false },
 
       // CAPACITY
       { type: 'header', label: 'CAPACITY & UTILIZATION', section: 'cap' },
@@ -50,14 +52,6 @@ const PlannerGrid = ({ decisions, simulation, updateVal, collapsed, toggleSectio
       { type: 'output', label: 'Interest', id: 'interest', format: 'currency', negative: true, section: 'inc' },
       { type: 'output', label: 'Taxes', id: 'tax', format: 'currency', negative: true, section: 'inc', tooltip: "30% of EBT (Earnings Before Tax)." },
       { type: 'output', label: 'Net Income', id: 'netIncome', format: 'currency', highlight: true, section: 'inc' },
-
-      // METRICS
-      { type: 'header', label: 'METRICS', section: 'met' },
-      { type: 'output', label: 'ROE %', id: 'roe', format: 'percent', highlight: true, section: 'met', tooltip: "Return on Equity = Net Income / Total Equity" },
-      { type: 'output', label: 'ROA %', id: 'roa', format: 'percent', highlight: false, section: 'met', tooltip: "Return on Assets = Net Income / Total Assets" },
-      { type: 'output', label: 'Asset Turnover', id: 'assetTurnover', format: 'decimal', highlight: false, section: 'met', tooltip: "Revenue / Total Assets. Indicates efficiency." },
-      { type: 'output', label: 'Equity Multiplier', id: 'equityMultiplier', format: 'decimal', highlight: false, section: 'met', tooltip: "Total Assets / Total Equity. Indicates leverage." },
-      { type: 'output', label: 'Debt/Equity', id: 'debtEquityRatio', format: 'decimal', highlight: false, section: 'met', tooltip: "Total Debt / Total Equity. Indicates solvency." },
 
       // FINANCIAL POSITION
       { type: 'header', label: 'FINANCIAL POSITION', section: 'pos' },
@@ -151,8 +145,6 @@ const PlannerGrid = ({ decisions, simulation, updateVal, collapsed, toggleSectio
                     // 1. Input Cells
                     if (row.type === 'input') {
                       const val = decisions[round][row.id.split('.')[0]][row.id.split('.')[1]];
-                      // Check for warning flag specifically for salesRate
-                      const hasWarning = row.id === 'general.salesRate' && simulation[round].flags.salesCapped;
 
                       return (
                         <td key={round} className={`p-1 border-r border-slate-200 ${isDecision ? 'bg-indigo-50/50' : ''}`}>
@@ -161,13 +153,7 @@ const PlannerGrid = ({ decisions, simulation, updateVal, collapsed, toggleSectio
                             onChange={(v) => updateVal(round, row.id, v)}
                             prefix={row.format === 'currency' ? '$' : ''}
                             suffix={row.suffix}
-                            warning={hasWarning}
                           />
-                          {hasWarning && (
-                            <div className="text-[9px] text-amber-600 font-bold text-right pr-2">
-                              Max: {simulation[round].flags.maxRatePossible}%
-                            </div>
-                          )}
                         </td>
                       );
                     }

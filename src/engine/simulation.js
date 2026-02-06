@@ -10,7 +10,6 @@ import {
 export function calculateYear(start, decision, prevEfficiency = 0, startInventoryDetails, rates) {
   // 1. Efficiency & Costs
   const costMultiplier = 1 - prevEfficiency;
-  const salesRate = decision.general.salesRate / 100;
 
   let revenue = 0;
   let totalProdCost = 0;
@@ -24,9 +23,6 @@ export function calculateYear(start, decision, prevEfficiency = 0, startInventor
   const nextInventoryDetails = { A: {units:0, value:0}, B: {units:0, value:0}, C: {units:0, value:0} };
 
   const products = ['A', 'B', 'C'];
-
-  let salesCapped = false;
-  let maxRatePossible = 0;
 
   products.forEach(p => {
     const prodQty = decision.qty[p];
@@ -47,15 +43,8 @@ export function calculateYear(start, decision, prevEfficiency = 0, startInventor
     const oldUnitCost = oldUnits > 0 ? oldTotalValue / oldUnits : 0;
     const available = oldUnits + prodQty;
 
-    // interpret salesRate as sell-through of available stock (cap at 100%)
-    const sellThrough = Math.min(salesRate, 1);
-    let demand = available * sellThrough;
-
-    // optional UI flag: if user typed >100%, show it is capped to 100%
-    if (salesRate > 1 && available > 0) {
-      salesCapped = true;
-      maxRatePossible = 100;
-    }
+    // Unit-based sales: user specifies how many units to sell, capped to available stock
+    const demand = Math.min(decision.sales[p], available);
 
     let soldFromOld = 0;
     let soldFromNew = 0;
@@ -89,9 +78,13 @@ export function calculateYear(start, decision, prevEfficiency = 0, startInventor
   });
 
   // 2. Fixed Costs
-  const endST = Math.max(0, start.stDebt - decision.finance.payST + decision.finance.newST);
-  const endLT = Math.max(0, start.ltDebt - decision.finance.payLT + decision.finance.newLT);
-  const interest = (endST * (rates.st/100)) + (endLT * (rates.lt/100));
+  // Clamp repayments to actual debt owed to prevent balance sheet imbalance
+  const actualPayST = Math.min(decision.finance.payST, start.stDebt);
+  const actualPayLT = Math.min(decision.finance.payLT, start.ltDebt);
+  const endST = start.stDebt - actualPayST + decision.finance.newST;
+  const endLT = start.ltDebt - actualPayLT + decision.finance.newLT;
+  // Interest on beginning-of-period balances (standard accounting convention)
+  const interest = (start.stDebt * (rates.st/100)) + (start.ltDebt * (rates.lt/100));
   const depreciation = start.fixedAssets * DEPRECIATION_RATE;
   const trainingExp = decision.inv.labour;
   const opEx = depreciation + trainingExp;
@@ -105,7 +98,7 @@ export function calculateYear(start, decision, prevEfficiency = 0, startInventor
 
   // 4. Cash Flow
   const cashIn = start.cash + revenue + decision.finance.newST + decision.finance.newLT;
-  const cashOut = totalProdCost + trainingExp + interest + tax + decision.inv.machine + decision.finance.payST + decision.finance.payLT + decision.finance.div;
+  const cashOut = totalProdCost + trainingExp + interest + tax + decision.inv.machine + actualPayST + actualPayLT + decision.finance.div;
   const endCash = cashIn - cashOut;
 
   // 5. Balance Sheet
@@ -162,10 +155,6 @@ export function calculateYear(start, decision, prevEfficiency = 0, startInventor
         equity: endEquity,
         totalLiabEquity: endTotalLiabEquity,
         totalUnitsSold
-    },
-    flags: {
-        salesCapped,
-        maxRatePossible
     },
     inventoryDetails: nextInventoryDetails,
     limits: start.limits,

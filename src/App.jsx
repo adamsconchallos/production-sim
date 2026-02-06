@@ -47,20 +47,17 @@ export default function StratFi() {
   // --- Decisions State ---
   const [decisions, setDecisions] = useState({
     r1: {
-      general: { salesRate: 100 },
-      qty: { A: 0, B: 0, C: 0 }, price: { A: 33, B: 32, C: 31 },
+      qty: { A: 0, B: 0, C: 0 }, sales: { A: 0, B: 0, C: 0 }, price: { A: 33, B: 32, C: 31 },
       inv: { machine: 0, labour: 0 },
       finance: { newST: 0, newLT: 0, payST: 0, payLT: 0, div: 0 }
     },
     r2: {
-      general: { salesRate: 100 },
-      qty: { A: 0, B: 0, C: 0 }, price: { A: 33, B: 32, C: 31 },
+      qty: { A: 0, B: 0, C: 0 }, sales: { A: 0, B: 0, C: 0 }, price: { A: 33, B: 32, C: 31 },
       inv: { machine: 0, labour: 0 },
       finance: { newST: 0, newLT: 0, payST: 0, payLT: 0, div: 0 }
     },
     r3: {
-      general: { salesRate: 100 },
-      qty: { A: 0, B: 0, C: 0 }, price: { A: 33, B: 32, C: 31 },
+      qty: { A: 0, B: 0, C: 0 }, sales: { A: 0, B: 0, C: 0 }, price: { A: 33, B: 32, C: 31 },
       inv: { machine: 0, labour: 0 },
       finance: { newST: 0, newLT: 0, payST: 0, payLT: 0, div: 0 }
     }
@@ -76,7 +73,6 @@ export default function StratFi() {
     growth: false,
     fin: false,
     inc: false,
-    met: false,
     pos: false
   });
 
