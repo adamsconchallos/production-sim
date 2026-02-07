@@ -217,7 +217,7 @@ function StratFi({ session, logout, onExitDemo }) {
             return {
                 financials: actualRec.state.financials || actualRec.state,
                 inventoryDetails: actualRec.inventory_details,
-                limits: actualRec.state.limits || lastState.state.limits,
+                limits: actualRec.state.limits || lastState.state.limits || { machine: 1000, labour: 1000, material: 500 },
                 usage: actualRec.state.usage || { machine: 0, labour: 0 },
                 nextStart: actualRec.state, // This is basically what we saved as nextStart
                 nextEfficiency: actualRec.efficiency,

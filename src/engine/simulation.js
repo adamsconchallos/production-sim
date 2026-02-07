@@ -7,7 +7,12 @@ import {
   BASE_COSTS
 } from '../constants/recipes';
 
+const DEFAULT_LIMITS = { machine: 1000, labour: 1000, material: 500 };
+
 export function calculateYear(start, decision, prevEfficiency = 0, startInventoryDetails, rates) {
+  // Ensure limits always exist
+  if (!start.limits) start = { ...start, limits: DEFAULT_LIMITS };
+
   // 1. Efficiency & Costs
   const costMultiplier = 1 - prevEfficiency;
 
