@@ -10,7 +10,7 @@ const InputCell = ({ value, onChange, prefix = "", suffix = "", className = "", 
     <input
       type="number"
       className={`block w-full h-full bg-transparent ${prefix ? 'pl-5' : 'pl-2'} ${suffix ? 'pr-6' : 'pr-1'} border-0 focus:ring-2 focus:ring-inset focus:ring-indigo-500 text-sm text-right appearance-none ${warning ? 'text-amber-600 font-bold' : ''} ${readOnly ? 'text-slate-500 bg-slate-50 cursor-default' : ''}`}
-      value={value}
+      value={value ?? ''}
       onChange={(e) => !readOnly && onChange(parseFloat(e.target.value) || 0)}
       readOnly={readOnly}
     />

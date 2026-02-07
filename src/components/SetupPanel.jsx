@@ -33,31 +33,31 @@ const SetupPanel = ({ setup, setSetup, showSetup, setShowSetup }) => {
           <div>
             <span className="text-xs font-bold text-slate-400 uppercase">Assets</span>
             <div className="mt-2 space-y-1">
-              <label className="flex justify-between items-center"><span>Cash</span> <input type="number" className="w-20 border rounded px-1" value={setup.cash} onChange={e => setSetup({...setup, cash: parseFloat(e.target.value)||0})} /></label>
-              <label className="flex justify-between items-center"><span>Machines</span> <input type="number" className="w-20 border rounded px-1" value={setup.fixedAssets} onChange={e => setSetup({...setup, fixedAssets: parseFloat(e.target.value)||0})} /></label>
+              <label className="flex justify-between items-center"><span>Cash</span> <input type="number" className="w-20 border rounded px-1" value={setup.cash ?? ''} onChange={e => setSetup({...setup, cash: parseFloat(e.target.value)||0})} /></label>
+              <label className="flex justify-between items-center"><span>Machines</span> <input type="number" className="w-20 border rounded px-1" value={setup.fixedAssets ?? ''} onChange={e => setSetup({...setup, fixedAssets: parseFloat(e.target.value)||0})} /></label>
             </div>
           </div>
           <div>
             <span className="text-xs font-bold text-slate-400 uppercase">Liabilities</span>
             <div className="mt-2 space-y-1">
-              <label className="flex justify-between items-center"><span>ST Debt</span> <input type="number" className="w-20 border rounded px-1" value={setup.stDebt} onChange={e => setSetup({...setup, stDebt: parseFloat(e.target.value)||0})} /></label>
-              <label className="flex justify-between items-center"><span>LT Debt</span> <input type="number" className="w-20 border rounded px-1" value={setup.ltDebt} onChange={e => setSetup({...setup, ltDebt: parseFloat(e.target.value)||0})} /></label>
+              <label className="flex justify-between items-center"><span>ST Debt</span> <input type="number" className="w-20 border rounded px-1" value={setup.stDebt ?? ''} onChange={e => setSetup({...setup, stDebt: parseFloat(e.target.value)||0})} /></label>
+              <label className="flex justify-between items-center"><span>LT Debt</span> <input type="number" className="w-20 border rounded px-1" value={setup.ltDebt ?? ''} onChange={e => setSetup({...setup, ltDebt: parseFloat(e.target.value)||0})} /></label>
             </div>
           </div>
           <div>
             <span className="text-xs font-bold text-slate-400 uppercase">Equity</span>
             <div className="mt-2 space-y-1">
-              <label className="flex justify-between items-center"><span>Capital</span> <input type="number" className="w-20 border rounded px-1" value={setup.equity} onChange={e => setSetup({...setup, equity: parseFloat(e.target.value)||0})} /></label>
-              <label className="flex justify-between items-center"><span>Ret. Earn</span> <input type="number" className="w-20 border rounded px-1" value={setup.retainedEarnings} onChange={e => setSetup({...setup, retainedEarnings: parseFloat(e.target.value)||0})} /></label>
+              <label className="flex justify-between items-center"><span>Capital</span> <input type="number" className="w-20 border rounded px-1" value={setup.equity ?? ''} onChange={e => setSetup({...setup, equity: parseFloat(e.target.value)||0})} /></label>
+              <label className="flex justify-between items-center"><span>Ret. Earn</span> <input type="number" className="w-20 border rounded px-1" value={setup.retainedEarnings ?? ''} onChange={e => setSetup({...setup, retainedEarnings: parseFloat(e.target.value)||0})} /></label>
             </div>
           </div>
           <div>
             <span className="text-xs font-bold text-slate-400 uppercase">Rates & Limits</span>
             <div className="mt-2 space-y-1">
-              <label className="flex justify-between items-center"><span>ST Rate %</span> <input type="number" className="w-16 border rounded px-1" value={setup.rates.st} onChange={e => setSetup({...setup, rates: {...setup.rates, st: parseFloat(e.target.value)||0}})} /></label>
-              <label className="flex justify-between items-center"><span>Tax Rate %</span> <input type="number" className="w-16 border rounded px-1" value={setup.rates.tax} onChange={e => setSetup({...setup, rates: {...setup.rates, tax: parseFloat(e.target.value)||0}})} /></label>
-              <label className="flex justify-between items-center"><span>Mach Cap</span> <input type="number" className="w-16 border rounded px-1" value={setup.limits.machine} onChange={e => setSetup({...setup, limits: {...setup.limits, machine: parseFloat(e.target.value)||0}})} /></label>
-              <label className="flex justify-between items-center"><span>Lab Cap</span> <input type="number" className="w-16 border rounded px-1" value={setup.limits.labour} onChange={e => setSetup({...setup, limits: {...setup.limits, labour: parseFloat(e.target.value)||0}})} /></label>
+              <label className="flex justify-between items-center"><span>ST Rate %</span> <input type="number" className="w-16 border rounded px-1" value={setup.rates.st ?? ''} onChange={e => setSetup({...setup, rates: {...setup.rates, st: parseFloat(e.target.value)||0}})} /></label>
+              <label className="flex justify-between items-center"><span>Tax Rate %</span> <input type="number" className="w-16 border rounded px-1" value={setup.rates.tax ?? ''} onChange={e => setSetup({...setup, rates: {...setup.rates, tax: parseFloat(e.target.value)||0}})} /></label>
+              <label className="flex justify-between items-center"><span>Mach Cap</span> <input type="number" className="w-16 border rounded px-1" value={setup.limits.machine ?? ''} onChange={e => setSetup({...setup, limits: {...setup.limits, machine: parseFloat(e.target.value)||0}})} /></label>
+              <label className="flex justify-between items-center"><span>Lab Cap</span> <input type="number" className="w-16 border rounded px-1" value={setup.limits.labour ?? ''} onChange={e => setSetup({...setup, limits: {...setup.limits, labour: parseFloat(e.target.value)||0}})} /></label>
             </div>
           </div>
         </div>

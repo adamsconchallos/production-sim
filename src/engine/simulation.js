@@ -154,7 +154,10 @@ export function calculateYear(start, decision, prevEfficiency = 0, startInventor
         ltDebt: endLT,
         equity: endEquity,
         totalLiabEquity: endTotalLiabEquity,
-        totalUnitsSold
+        totalUnitsSold,
+        inventoryUnitsA: nextInventoryDetails.A.units,
+        inventoryUnitsB: nextInventoryDetails.B.units,
+        inventoryUnitsC: nextInventoryDetails.C.units
     },
     inventoryDetails: nextInventoryDetails,
     limits: start.limits,
@@ -171,8 +174,8 @@ export function calculateYear(start, decision, prevEfficiency = 0, startInventor
     },
     nextEfficiency,
     capacityCheck: {
-        machine: { used: machineHoursUsed, limit: start.limits.machine, safe: machineHoursUsed <= start.limits.machine },
-        labour: { used: labourHoursUsed, limit: start.limits.labour, safe: labourHoursUsed <= start.limits.labour }
+        machine: { used: machineHoursUsed, limit: start.limits.machine, isOver: machineHoursUsed > start.limits.machine },
+        labour: { used: labourHoursUsed, limit: start.limits.labour, isOver: labourHoursUsed > start.limits.labour }
     }
   };
 }

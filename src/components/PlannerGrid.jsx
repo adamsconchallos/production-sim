@@ -4,7 +4,10 @@ import Tooltip from './ui/Tooltip';
 import InputCell from './ui/InputCell';
 import { formatVal } from '../utils/formatters';
 
-const PlannerGrid = ({ decisions, simulation, updateVal, collapsed, toggleSection }) => {
+const PlannerGrid = ({ decisions, simulation, updateVal, collapsed, toggleSection, history = [], gameData }) => {
+  const currentRound = gameData?.current_round || 1;
+  const isCleared = gameData?.round_status === 'cleared';
+
   const gridRows = useMemo(() => {
     const rawRows = [
       // OPERATIONS
@@ -56,8 +59,11 @@ const PlannerGrid = ({ decisions, simulation, updateVal, collapsed, toggleSectio
       // FINANCIAL POSITION
       { type: 'header', label: 'FINANCIAL POSITION', section: 'pos' },
       { type: 'output', label: 'Cash', id: 'cash', format: 'currency', checkNegative: true, section: 'pos' },
-      { type: 'output', label: 'Inventory (Units)', id: 'inventoryUnits', format: 'number', section: 'pos', highlight: false },
       { type: 'output', label: 'Inventory ($)', id: 'inventory', format: 'currency', section: 'pos', tooltip: "Value of Unsold Finished Goods. Uses specific unit cost." },
+      { type: 'output', label: 'Inventory (Units)', id: 'inventoryUnits', format: 'number', section: 'pos', highlight: false },
+      { type: 'output', label: '↳ Prod A Units', id: 'inventoryUnitsA', format: 'number', section: 'pos' },
+      { type: 'output', label: '↳ Prod B Units', id: 'inventoryUnitsB', format: 'number', section: 'pos' },
+      { type: 'output', label: '↳ Prod C Units', id: 'inventoryUnitsC', format: 'number', section: 'pos' },
       { type: 'output', label: 'Fixed Assets', id: 'fixedAssets', format: 'currency', section: 'pos', tooltip: "Book Value. Formula: Start Assets - Depreciation + New Inv." },
       { type: 'output', label: 'Total Assets', id: 'totalAssets', format: 'currency', highlight: true, section: 'pos' },
       { type: 'spacer', label: '', section: 'pos' },
@@ -76,7 +82,7 @@ const PlannerGrid = ({ decisions, simulation, updateVal, collapsed, toggleSectio
         <h3 className="font-bold text-slate-700">Strategic Planner</h3>
         <div className="text-xs text-slate-500">
           <span className="inline-block w-3 h-3 bg-indigo-50 border border-indigo-200 mr-1 align-middle"></span>
-          Decision Round (1)
+          Round {currentRound} Planner
         </div>
       </div>
 
@@ -85,9 +91,22 @@ const PlannerGrid = ({ decisions, simulation, updateVal, collapsed, toggleSectio
           <thead>
             <tr className="bg-slate-100 text-slate-600 uppercase text-xs tracking-wider">
               <th className="p-3 text-left w-48 border-r border-slate-200 font-bold">Metric</th>
-              <th className="p-3 w-40 border-r border-indigo-100 bg-indigo-50 text-indigo-900 font-bold border-b-2 border-b-indigo-500">Round 1 (Decision)</th>
-              <th className="p-3 w-40 border-r border-slate-200">Round 2 (Proj)</th>
-              <th className="p-3 w-40">Round 3 (Proj)</th>
+              {[1, 2, 3].map(roundNum => {
+                const isPast = roundNum < currentRound || (roundNum === currentRound && isCleared);
+                const isCurrent = roundNum === currentRound;
+                
+                return (
+                  <th 
+                    key={roundNum} 
+                    className={`p-3 w-40 border-r border-slate-200 ${isCurrent ? 'bg-indigo-50 text-indigo-900 font-bold border-b-2 border-b-indigo-500' : ''}`}
+                  >
+                    Round {roundNum} 
+                    <div className="text-[10px] font-normal normal-case opacity-60">
+                      {(roundNum === currentRound && isCleared) ? '(Actual)' : isPast ? '(Actual)' : isCurrent ? '(Decision)' : '(Proj)'}
+                    </div>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
@@ -139,20 +158,49 @@ const PlannerGrid = ({ decisions, simulation, updateVal, collapsed, toggleSectio
                     {row.tooltip && <Tooltip text={row.tooltip} />}
                   </td>
 
-                  {['r1', 'r2', 'r3'].map(round => {
-                    const isDecision = round === 'r1';
+                  {[1, 2, 3].map(roundNum => {
+                    const isPast = roundNum < currentRound || (roundNum === currentRound && isCleared);
+                    const isCurrent = roundNum === currentRound;
+                    
+                    // Helper to get historical value if available
+                    const getActualVal = () => {
+                      const hist = history.find(h => h.round === roundNum);
+                      if (!hist) return null;
+                      
+                      // Check for full financials object first (newly added)
+                      if (hist.state.financials) {
+                        return hist.state.financials[row.id];
+                      }
+                      // Fallback to top-level state keys for roe, netIncome, revenue
+                      return hist.state[row.id];
+                    };
+
+                    const actualVal = getActualVal();
+                    const useActual = isPast && actualVal !== null;
 
                     // 1. Input Cells
                     if (row.type === 'input') {
-                      const val = decisions[round][row.id.split('.')[0]][row.id.split('.')[1]];
+                      if (useActual) {
+                         // Actual inputs are usually not displayed as inputs, but we'll show them as read-only values
+                         return (
+                           <td key={roundNum} className="p-2 text-right text-slate-400 font-mono text-xs border-r border-slate-200 bg-slate-50">
+                             {row.format === 'currency' ? '$' : ''}{actualVal?.toLocaleString()}
+                           </td>
+                         );
+                      }
+
+                      // Decision logic maps r1 to current round, r2 to current+1, etc.
+                      const decisionRound = `r${roundNum - (currentRound - 1)}`;
+                      const val = decisions[decisionRound]?.[row.id.split('.')[0]]?.[row.id.split('.')[1]];
 
                       return (
-                        <td key={round} className={`p-1 border-r border-slate-200 ${isDecision ? 'bg-indigo-50/50' : ''}`}>
+                        <td key={roundNum} className={`p-1 border-r border-slate-200 ${isCurrent ? 'bg-indigo-50/50' : ''}`}>
                           <InputCell
                             value={val}
-                            onChange={(v) => updateVal(round, row.id, v)}
+                            onChange={(v) => updateVal(decisionRound, row.id, v)}
                             prefix={row.format === 'currency' ? '$' : ''}
                             suffix={row.suffix}
+                            disabled={isPast}
                           />
                         </td>
                       );
@@ -160,22 +208,24 @@ const PlannerGrid = ({ decisions, simulation, updateVal, collapsed, toggleSectio
 
                     // 2. Display Limit Cells
                     if (row.type === 'displayLimit') {
-                      const val = simulation[round].limits[row.id];
+                      const decisionRound = `r${roundNum - (currentRound - 1)}`;
+                      const val = useActual ? actualVal : simulation[decisionRound]?.limits[row.id];
                       return (
-                        <td key={round} className="p-2 text-right text-slate-500 font-mono text-xs border-r border-slate-200">
-                          {val.toLocaleString()}
+                        <td key={roundNum} className={`p-2 text-right text-slate-500 font-mono text-xs border-r border-slate-200 ${useActual ? 'bg-slate-50' : ''}`}>
+                          {val?.toLocaleString()}
                         </td>
                       );
                     }
 
                     // 3. Status Cells (Percentage)
                     if (row.type === 'status') {
-                      const status = simulation[round].capacityCheck[row.id];
-                      const pct = status.limit > 0 ? (status.used / status.limit) * 100 : 0;
+                      const decisionRound = `r${roundNum - (currentRound - 1)}`;
+                      const status = simulation[decisionRound]?.capacityCheck[row.id];
+                      const pct = status?.limit > 0 ? (status.used / status.limit) * 100 : 0;
                       const isOver = pct > 100;
 
                       return (
-                        <td key={round} className={`p-2 text-right text-xs font-bold border-r border-slate-200 ${isOver ? 'text-red-600 bg-red-50' : 'text-emerald-600'}`}>
+                        <td key={roundNum} className={`p-2 text-right text-xs font-bold border-r border-slate-200 ${isOver ? 'text-red-600 bg-red-50' : 'text-emerald-600'}`}>
                           {pct.toFixed(0)}% {isOver && '(!)'}
                         </td>
                       );
@@ -183,15 +233,16 @@ const PlannerGrid = ({ decisions, simulation, updateVal, collapsed, toggleSectio
 
                     // 4. Output Cells
                     if (row.type === 'output') {
-                      const val = simulation[round].financials[row.id];
+                      const decisionRound = `r${roundNum - (currentRound - 1)}`;
+                      const val = useActual ? actualVal : simulation[decisionRound]?.financials[row.id];
                       const isNegative = row.checkNegative && val < 0;
                       return (
-                        <td key={round} className={`p-2 text-right border-r border-slate-200 ${row.highlight ? 'bg-indigo-50 font-bold' : ''} ${isNegative || (row.negative && val > 0) ? 'text-red-600' : 'text-slate-700'}`}>
+                        <td key={roundNum} className={`p-2 text-right border-r border-slate-200 ${row.highlight ? 'bg-indigo-50 font-bold' : ''} ${isNegative || (row.negative && val > 0) ? 'text-red-600' : 'text-slate-700'} ${useActual ? 'bg-slate-50/80' : ''}`}>
                           {row.negative && val > 0 ? `(${formatVal(val, row.format)})` : formatVal(val, row.format)}
                         </td>
                       );
                     }
-                    return <td key={round}></td>;
+                    return <td key={roundNum}></td>;
                   })}
                 </tr>
               );
