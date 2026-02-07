@@ -44,7 +44,7 @@ export default function App() {
   const [demoMode, setDemoMode] = useState(false);
 
   useEffect(() => {
-    document.title = "MutandisLab - Strategy at Altitude";
+    document.title = "MutandisLab - Change What Must";
   }, []);
 
   if (loading) {
@@ -357,7 +357,7 @@ function StratFi({ session, logout, onExitDemo }) {
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
             <img src="/logo_transparent.png" alt="MutandisLab Logo" className="h-8 w-auto" />
-            MutandisLab <span className="text-sm font-normal text-[#4fd1c5]">| Strategy at Altitude</span>
+            MutandisLab <span className="text-sm font-normal text-[#4fd1c5]">| Change What Must</span>
           </h1>
           {isGameMode && (
             <div className="text-xs text-slate-300 mt-1">

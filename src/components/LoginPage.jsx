@@ -57,7 +57,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
           <h1 className="text-3xl font-bold text-white">
             MutandisLab
           </h1>
-          <p className="text-[#4fd1c5] text-sm mt-1 font-medium">Strategy at Altitude</p>
+          <p className="text-[#4fd1c5] text-sm mt-1 font-medium">Change What Must</p>
         </div>
 
         {/* Card */}

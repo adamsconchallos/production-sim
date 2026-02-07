@@ -50,7 +50,7 @@ const Footer = () => {
         </div>
       </div>
       <div className="mt-8 pt-4 border-t border-slate-700 text-[10px] text-center uppercase tracking-[0.2em] font-bold text-[#4fd1c5]">
-        Strategy at Altitude
+        Change What Must
       </div>
 
       <LegalModal
