@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Calculator, LogOut, Plus, Users, Play, Square, Zap, RefreshCw, Trash2, Copy, RotateCcw, Settings } from 'lucide-react';
+import { Calculator, LogOut, Plus, Users, Play, Square, Zap, RefreshCw, Trash2, Copy, RotateCcw, Settings, Trophy } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { clearMarket as runClearMarket, computeFirmActualResults, calculateAR1Forecast } from '../engine/marketClearing';
 import { DEFAULT_SCENARIOS } from '../constants/defaults';
+import { useInstructorLeaderboard } from '../hooks/useInstructorLeaderboard';
 import BalanceSheetEditor from './teacher/BalanceSheetEditor';
 import DemandCurveEditor from './teacher/DemandCurveEditor';
+import InstructorLeaderboard from './InstructorLeaderboard';
 
 function generatePin() {
   return String(Math.floor(1000 + Math.random() * 9000));
@@ -25,6 +27,9 @@ const TeacherDashboard = ({ session, logout }) => {
   const [editParameters, setEditParameters] = useState(null);
   const [savingSetup, setSavingSetup] = useState(false);
   const [savingParams, setSavingParams] = useState(false);
+
+  // Leaderboard Data
+  const { leaderboard, loading: loadingLeaderboard, refresh: refreshLeaderboard } = useInstructorLeaderboard(session?.gameId);
 
   const fetchGame = useCallback(async () => {
     if (!supabase || !session?.gameId) return;
@@ -200,9 +205,8 @@ const TeacherDashboard = ({ session, logout }) => {
       const stateInserts = [];
       for (const fd of firmDecisions) {
         const fs = firmStates[fd.firmId] || null;
-        // If fs is null (shouldn't happen if Round 0 is seeded), we use gameConfig.setup
-        const baseState = fs?.state || gameConfig.setup;
-        
+        // If fs is null (shouldn't happen if Round 0 is seeded), computeFirmActualResults uses gameConfig.setup
+
         const actual = computeFirmActualResults(
           fd.data, results, fs, gameConfig.setup, gameConfig.rates
         );
@@ -325,6 +329,7 @@ const TeacherDashboard = ({ session, logout }) => {
         text: `Round ${gameConfig.current_round} cleared!`
       });
       fetchGame();
+      refreshLeaderboard(); // Refresh leaderboard with new data
     } catch (err) {
       console.error('Market clearing error:', err);
       setMessage({ type: 'error', text: `Clearing failed: ${err.message}` });
@@ -449,6 +454,7 @@ const TeacherDashboard = ({ session, logout }) => {
       setMessage({ type: 'success', text: 'Game has been reset to Round 1.' });
       fetchGame();
       fetchSubmissions();
+      refreshLeaderboard(); // Refresh leaderboard after reset
     } catch (err) {
       console.error(err);
       setMessage({ type: 'error', text: 'Reset failed: ' + err.message });
@@ -594,6 +600,7 @@ const TeacherDashboard = ({ session, logout }) => {
           {[
             { key: 'roster', label: 'Firm Roster', icon: <Users className="w-4 h-4" /> },
             { key: 'round', label: 'Round Control', icon: <Play className="w-4 h-4" /> },
+            { key: 'leaderboard', label: 'Leaderboard', icon: <Trophy className="w-4 h-4" /> },
             { key: 'setup', label: 'Game Setup', icon: <Settings className="w-4 h-4" /> },
           ].map(t => (
             <button
@@ -764,7 +771,7 @@ const TeacherDashboard = ({ session, logout }) => {
                 </button>
               )}
               <button
-                onClick={() => { fetchGame(); fetchSubmissions(); }}
+                onClick={() => { fetchGame(); fetchSubmissions(); refreshLeaderboard(); }}
                 className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-3 rounded-lg font-bold flex items-center gap-2"
               >
                 <RefreshCw className="w-4 h-4" /> Refresh
@@ -788,6 +795,15 @@ const TeacherDashboard = ({ session, logout }) => {
               </div>
             )}
           </div>
+        )}
+
+        {/* TAB: Leaderboard */}
+        {tab === 'leaderboard' && (
+          <InstructorLeaderboard
+            leaderboard={leaderboard}
+            loading={loadingLeaderboard}
+            currentRound={game?.current_round}
+          />
         )}
 
         {/* TAB: Game Setup */}
