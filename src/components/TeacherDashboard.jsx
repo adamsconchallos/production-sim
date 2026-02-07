@@ -33,6 +33,8 @@ import SupplyCurveChart from './teacher/SupplyCurveChart';
 import InstructorLeaderboard from './InstructorLeaderboard';
 import MarketBrief from './MarketBrief';
 import Footer from './ui/Footer';
+import { useTranslation } from '../contexts/LanguageContext';
+import LanguageSwitcher from './ui/LanguageSwitcher';
 
 function generatePin() {
   return String(Math.floor(1000 + Math.random() * 9000));
@@ -274,6 +276,7 @@ const TeacherDashboard = ({ session, logout }) => {
 
 // --- Sub-Component: Game Management ---
 function GameManagement({ gameId, session, onBack, logout }) {
+  const { t } = useTranslation();
   const [game, setGame] = useState(null);
   const [firms, setFirms] = useState([]);
   const [submissions, setSubmissions] = useState([]);
@@ -969,48 +972,50 @@ function GameManagement({ gameId, session, onBack, logout }) {
             <h1 className="text-xl font-bold text-slate-900">{game?.name}</h1>
             <div className="text-xs text-slate-500">
               Join Code: <span className="font-mono font-bold text-indigo-600">{game?.join_code}</span> &middot; Round {game?.current_round} ({game?.round_status})
-            </div>
-          </div>
-        </div>
-        <button onClick={logout} className="p-2 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50"><LogOut className="w-5 h-5" /></button>
-      </header>
-
-      <main className="max-w-5xl mx-auto space-y-6">
-        {message && (
-          <div className={`p-3 rounded-lg text-sm font-medium border ${
-            message.type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-          }`}>
-            {message.text}
-            <button onClick={() => setMessage(null)} className="float-right font-bold">x</button>
-          </div>
-        )}
-
-        {/* Tab Navigation */}
-        <div className="flex bg-white p-1 rounded-lg gap-1 border border-slate-200 shadow-sm w-fit">
-          {[
-            { key: 'roster', label: 'Roster', icon: <Users className="w-4 h-4" /> },
-            { key: 'brief', label: 'Brief', icon: <TrendingUp className="w-4 h-4" /> },
-            { key: 'round', label: 'Control', icon: <Play className="w-4 h-4" /> },
-            { key: 'loans', label: 'Loans', icon: <Banknote className="w-4 h-4" />, disabled: !(game?.round_status === 'closed' || game?.round_status === 'loans_reviewed') },
-            { key: 'leaderboard', label: 'Ranking', icon: <Trophy className="w-4 h-4" /> },
-            { key: 'setup', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
-          ].map(t => !t.disabled && (
-            <button key={t.key} onClick={() => setTab(t.key)} className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${tab === t.key ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-              {t.icon} {t.label}
-            </button>
-          ))}
-        </div>
-
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <LanguageSwitcher />
+                      <button onClick={logout} className="p-2 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50" title={t('nav.sign_out')}><LogOut className="w-5 h-5" /></button>
+                    </div>
+                  </header>
+            
+                  <main className="max-w-5xl mx-auto space-y-6">
+                    {message && (
+                      <div className={`p-3 rounded-lg text-sm font-medium border ${
+                        message.type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                      }`}>
+                        {message.text}
+                        <button onClick={() => setMessage(null)} className="float-right font-bold">x</button>
+                      </div>
+                    )}
+            
+                    {/* Tab Navigation */}
+                    <div className="flex bg-white p-1 rounded-lg gap-1 border border-slate-200 shadow-sm w-fit">
+                      {[
+                        { key: 'roster', label: t('nav.roster'), icon: <Users className="w-4 h-4" /> },
+                        { key: 'brief', label: t('nav.brief'), icon: <TrendingUp className="w-4 h-4" /> },
+                        { key: 'round', label: t('nav.control'), icon: <Play className="w-4 h-4" /> },
+                        { key: 'loans', label: t('nav.loans'), icon: <Banknote className="w-4 h-4" />, disabled: !(game?.round_status === 'closed' || game?.round_status === 'loans_reviewed') },
+                        { key: 'leaderboard', label: t('nav.ranking'), icon: <Trophy className="w-4 h-4" /> },
+                        { key: 'setup', label: t('nav.settings'), icon: <Settings className="w-4 h-4" /> },
+                      ].map(t => !t.disabled && (
+                        <button key={t.key} onClick={() => setTab(t.key)} className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${tab === t.key ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                          {t.icon} {t.label}
+                        </button>
+                      ))}
+                    </div>
         {tab === 'roster' && (
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-slate-700">Firm Roster</h3>
+              <h3 className="font-bold text-slate-700">{t('roster.title')}</h3>
               <div className="flex gap-2 items-center">
                 <button
                   onClick={downloadExampleCSV}
                   className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold underline"
                 >
-                  Download Example
+                  {t('roster.download_example')}
                 </button>
                 <input
                   type="file"
@@ -1023,22 +1028,22 @@ function GameManagement({ gameId, session, onBack, logout }) {
                   htmlFor="csv-upload"
                   className="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"
                 >
-                  <Upload className="w-3.5 h-3.5" /> Upload CSV
+                  <Upload className="w-3.5 h-3.5" /> {t('roster.upload_csv')}
                 </label>
               </div>
             </div>
             <div className="flex gap-2 mb-6">
-              <input type="text" value={newFirmName} onChange={(e) => setNewFirmName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addFirm()} className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:border-indigo-500 outline-none" placeholder="New firm name..." />
-              <button onClick={addFirm} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1"><Plus className="w-4 h-4" /> Add Firm</button>
+              <input type="text" value={newFirmName} onChange={(e) => setNewFirmName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addFirm()} className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:border-indigo-500 outline-none" placeholder={t('roster.placeholder')} />
+              <button onClick={addFirm} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1"><Plus className="w-4 h-4" /> {t('roster.add_firm')}</button>
             </div>
-            {firms.length === 0 ? <p className="text-slate-400 text-sm text-center py-8">No firms yet.</p> : (
+            {firms.length === 0 ? <p className="text-slate-400 text-sm text-center py-8">{t('roster.no_firms')}</p> : (
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-500 text-xs uppercase">
-                    <th className="text-left p-2">Firm Name</th>
-                    <th className="text-left p-2">Students</th>
-                    <th className="text-left p-2">PIN</th>
-                    <th className="text-right p-2">Actions</th>
+                    <th className="text-left p-2">{t('login.firm_name')}</th>
+                    <th className="text-left p-2">{t('roster.students')}</th>
+                    <th className="text-left p-2">{t('login.pin')}</th>
+                    <th className="text-right p-2">{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>{firms.map(f => (
@@ -1063,56 +1068,55 @@ function GameManagement({ gameId, session, onBack, logout }) {
           />
         )}
 
-        {tab === 'round' && (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-             <div className="grid grid-cols-3 gap-4 mb-6 text-center">
-              <div className="bg-slate-50 rounded-lg p-4"><div className="text-2xl font-bold text-slate-900">{game?.current_round}</div><div className="text-[10px] text-slate-500 uppercase font-bold">Round</div></div>
-              <div className="bg-slate-50 rounded-lg p-4"><div className="text-2xl font-bold text-slate-900 capitalize">{game?.round_status}</div><div className="text-[10px] text-slate-500 uppercase font-bold">Status</div></div>
-              <div className="bg-slate-50 rounded-lg p-4"><div className="text-2xl font-bold text-slate-900">{submissions.length} / {firms.length}</div><div className="text-[10px] text-slate-500 uppercase font-bold">Submitted</div></div>
-            </div>
-
-            {/* Supply Curve Section */}
-            {submissions.length > 0 && (
-              <div className="mb-8">
-                <div className="flex justify-between items-center mb-4">
-                   <h4 className="text-sm font-bold text-slate-700">Industry Supply Analysis</h4>
-                   <div className="flex bg-slate-100 p-0.5 rounded-lg">
-                      {['A', 'B', 'C'].map(p => (
-                        <button 
-                          key={p} 
-                          onClick={() => setSupplyTab(p)}
-                          className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${supplyTab === p ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                          Product {p}
-                        </button>
-                      ))}
-                   </div>
-                </div>
-                <SupplyCurveChart submissions={submissions} product={supplyTab} />
-                <p className="mt-2 text-[10px] text-slate-400">
-                  This chart shows the cumulative industry supply at different price points for the current round. 
-                  Prices are sorted from lowest to highest to form the supply curve.
-                </p>
-              </div>
-            )}
-
-            <div className="flex gap-3 flex-wrap">
-              {(game?.round_status === 'setup' || game?.round_status === 'cleared') && game?.current_round < game?.max_rounds && (
-                <button onClick={openRound} className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2"><Play className="w-4 h-4" /> Open Round {game?.current_round + 1}</button>
-              )}
-              {game?.round_status === 'open' && (
-                <button onClick={closeSubmissions} className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2"><Square className="w-4 h-4" /> Close Submissions</button>
-              )}
-              {game?.round_status === 'loans_reviewed' && (
-                <button onClick={clearMarket} disabled={clearing} className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2"><Zap className="w-4 h-4" /> {clearing ? 'Clearing...' : 'Clear Market'}</button>
-              )}
-              <button onClick={() => { fetchGame(); fetchSubmissions(); refreshLeaderboard(); }} className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-3 rounded-lg font-bold flex items-center gap-2"><RefreshCw className="w-4 h-4" /> Refresh</button>
-              <div className="flex-1"></div>
-              <button onClick={resetGame} disabled={clearing} className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-3 rounded-lg font-bold flex items-center gap-2"><RotateCcw className="w-4 h-4" /> Reset Game</button>
-            </div>
-          </div>
-        )}
-
+                {tab === 'round' && (
+                  <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                     <div className="grid grid-cols-3 gap-4 mb-6 text-center">
+                      <div className="bg-slate-50 rounded-lg p-4"><div className="text-2xl font-bold text-slate-900">{game?.current_round}</div><div className="text-[10px] text-slate-500 uppercase font-bold">{t('common.round')}</div></div>
+                      <div className="bg-slate-50 rounded-lg p-4"><div className="text-2xl font-bold text-slate-900 capitalize">{game?.round_status}</div><div className="text-[10px] text-slate-500 uppercase font-bold">{t('common.status')}</div></div>
+                      <div className="bg-slate-50 rounded-lg p-4"><div className="text-2xl font-bold text-slate-900">{submissions.length} / {firms.length}</div><div className="text-[10px] text-slate-500 uppercase font-bold">{t('common.submitted')}</div></div>
+                    </div>
+        
+                    {/* Supply Curve Section */}
+                    {submissions.length > 0 && (
+                      <div className="mb-8">
+                        <div className="flex justify-between items-center mb-4">
+                           <h4 className="text-sm font-bold text-slate-700">{t('control.supply_analysis')}</h4>
+                           <div className="flex bg-slate-100 p-0.5 rounded-lg">
+                              {['A', 'B', 'C'].map(p => (
+                                <button 
+                                  key={p} 
+                                  onClick={() => setSupplyTab(p)}
+                                  className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${supplyTab === p ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                  Product {p}
+                                </button>
+                              ))}
+                           </div>
+                        </div>
+                        <SupplyCurveChart submissions={submissions} product={supplyTab} />
+                        <p className="mt-2 text-[10px] text-slate-400">
+                          This chart shows the cumulative industry supply at different price points for the current round. 
+                          Prices are sorted from lowest to highest to form the supply curve.
+                        </p>
+                      </div>
+                    )}
+        
+                    <div className="flex gap-3 flex-wrap">
+                      {(game?.round_status === 'setup' || game?.round_status === 'cleared') && game?.current_round < game?.max_rounds && (   
+                        <button onClick={openRound} className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2"><Play className="w-4 h-4" /> {t('control.open_round')} {game?.current_round + 1}</button>
+                      )}
+                      {game?.round_status === 'open' && (
+                        <button onClick={closeSubmissions} className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2"><Square className="w-4 h-4" /> {t('control.close_subs')}</button>
+                      )}
+                      {game?.round_status === 'loans_reviewed' && (
+                        <button onClick={clearMarket} disabled={clearing} className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2"><Zap className="w-4 h-4" /> {clearing ? t('control.clearing') : t('control.clear_market')}</button>
+                      )}
+                      <button onClick={() => { fetchGame(); fetchSubmissions(); refreshLeaderboard(); }} className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-3 rounded-lg font-bold flex items-center gap-2"><RefreshCw className="w-4 h-4" /> {t('common.refresh')}</button>      
+                      <div className="flex-1"></div>
+                      <button onClick={resetGame} disabled={clearing} className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-3 rounded-lg font-bold flex items-center gap-2"><RotateCcw className="w-4 h-4" /> {t('control.reset_game')}</button>
+                    </div>
+                  </div>
+                )}
         {tab === 'loans' && <LoanReviewPanel gameId={gameId} currentRound={game?.current_round} firms={firms} onPublish={publishLoans} />}
         {tab === 'leaderboard' && <InstructorLeaderboard leaderboard={leaderboard} loading={loadingLeaderboard} currentRound={game?.current_round} />}
         {tab === 'setup' && (

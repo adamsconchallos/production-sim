@@ -28,6 +28,8 @@ import SubmissionModal from './components/SubmissionModal';
 import SimpleChart from './components/charts/SimpleChart';
 import Leaderboard from './components/Leaderboard';
 import Footer from './components/ui/Footer';
+import { useTranslation } from './contexts/LanguageContext';
+import LanguageSwitcher from './components/ui/LanguageSwitcher';
 
 // --- Root App: Auth Gate ---
 export default function App() {
@@ -83,7 +85,7 @@ export default function App() {
 
 // --- Planner App (Student / Demo) ---
 function StratFi({ session, logout, onExitDemo }) {
-
+  const { t } = useTranslation();
   const [view, setView] = useState('grid');
   const [showSetup, setShowSetup] = useState(!session); // hide setup in game mode
 
@@ -369,28 +371,33 @@ function StratFi({ session, logout, onExitDemo }) {
                 onClick={() => setView('market')}
                 className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${view === 'market' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
             >
-                <TrendingUp className="w-4 h-4" /> Brief
+                <TrendingUp className="w-4 h-4" /> {t('nav.brief')}
             </button>
             <button
                 onClick={() => setView('grid')}
                 className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${view === 'grid' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
             >
-                <Table className="w-4 h-4" /> Planner
+                <Table className="w-4 h-4" /> {t('nav.planner')}
             </button>
             {isGameMode && (
               <button
                   onClick={() => setView('leaderboard')}
                   className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${view === 'leaderboard' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
               >
-                  <Trophy className="w-4 h-4" /> Leaderboard
+                  <Trophy className="w-4 h-4" /> {t('nav.leaderboard')}
               </button>
             )}
             <button
                 onClick={() => setView('charts')}
                 className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${view === 'charts' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
             >
-                <BarChart3 className="w-4 h-4" /> Analysis
+                <BarChart3 className="w-4 h-4" /> {t('nav.analysis')}
             </button>
+            
+            <div className="mx-2 flex items-center">
+              <LanguageSwitcher />
+            </div>
+
             {/* Download Button temporarily disabled or simplified */}
             <button
                 onClick={downloadCSV}
