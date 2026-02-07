@@ -19,7 +19,11 @@ export function useAuth() {
   const [error, setError] = useState(null);
 
   const loginStudent = useCallback(async (joinCode, firmName, pin) => {
-    if (!supabase) throw new Error('Supabase not configured');
+    if (!supabase) {
+      const msg = 'Supabase not configured. Check environment variables.';
+      setError(msg);
+      throw new Error(msg);
+    }
     setError(null);
 
     // Find the game by join code
@@ -70,7 +74,11 @@ export function useAuth() {
   }, []);
 
   const loginTeacher = useCallback(async (joinCode, teacherPin) => {
-    if (!supabase) throw new Error('Supabase not configured');
+    if (!supabase) {
+      const msg = 'Supabase not configured. Check environment variables.';
+      setError(msg);
+      throw new Error(msg);
+    }
     setError(null);
 
     const { data: game, error: gameErr } = await supabase
