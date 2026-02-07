@@ -27,6 +27,7 @@ import PlannerTabs from './components/planner/PlannerTabs';
 import SubmissionModal from './components/SubmissionModal';
 import SimpleChart from './components/charts/SimpleChart';
 import Leaderboard from './components/Leaderboard';
+import Footer from './components/ui/Footer';
 
 // --- Root App: Auth Gate ---
 export default function App() {
@@ -56,13 +57,18 @@ export default function App() {
   // Not logged in and not in demo mode → show login
   if (!session && !demoMode) {
     return (
-      <LoginPage
-        onLoginStudent={loginStudent}
-        onLoginInstructor={loginInstructor}
-        onSignUpInstructor={signUpInstructor}
-        onDemo={() => setDemoMode(true)}
-        error={error}
-      />
+      <div className="flex flex-col min-h-screen bg-slate-50">
+        <div className="flex-grow flex items-center justify-center py-12 px-4">
+          <LoginPage
+            onLoginStudent={loginStudent}
+            onLoginInstructor={loginInstructor}
+            onSignUpInstructor={signUpInstructor}
+            onDemo={() => setDemoMode(true)}
+            error={error}
+          />
+        </div>
+        <Footer />
+      </div>
     );
   }
 
@@ -507,6 +513,8 @@ function StratFi({ session, logout, onExitDemo }) {
           session={session}
           gameData={gameData}
         />
+
+        <Footer />
 
       </main>
     </div>

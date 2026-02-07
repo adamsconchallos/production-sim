@@ -5,7 +5,8 @@
       "Bash(npm run lint:*)",
       "Bash(npx vite build:*)",
       "Bash(git add:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(findstr:*)"
     ]
   }
 }

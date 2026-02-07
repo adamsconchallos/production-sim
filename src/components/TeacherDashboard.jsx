@@ -28,6 +28,7 @@ import BalanceSheetEditor from './teacher/BalanceSheetEditor';
 import DemandCurveEditor from './teacher/DemandCurveEditor';
 import LoanReviewPanel from './teacher/LoanReviewPanel';
 import InstructorLeaderboard from './InstructorLeaderboard';
+import Footer from './ui/Footer';
 
 function generatePin() {
   return String(Math.floor(1000 + Math.random() * 9000));
@@ -1087,6 +1088,7 @@ function GameManagement({ gameId, session, onBack, logout }) {
             </div>
           </div>
         )}
+        <Footer />
       </main>
     </div>
   );
