@@ -370,27 +370,27 @@ function StratFi({ session, logout, onExitDemo }) {
                 onClick={() => setView('market')}
                 className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${view === 'market' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
             >
-                <TrendingUp className="w-4 h-4" /> {t('nav.brief')}
+                <TrendingUp className="w-4 h-4" /> Brief
             </button>
             <button
                 onClick={() => setView('grid')}
                 className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${view === 'grid' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
             >
-                <Table className="w-4 h-4" /> {t('nav.planner')}
+                <Table className="w-4 h-4" /> Planner
             </button>
             {isGameMode && (
               <button
                   onClick={() => setView('leaderboard')}
                   className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${view === 'leaderboard' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
               >
-                  <Trophy className="w-4 h-4" /> {t('nav.leaderboard')}
+                  <Trophy className="w-4 h-4" /> Leaderboard
               </button>
             )}
             <button
                 onClick={() => setView('charts')}
                 className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${view === 'charts' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
             >
-                <BarChart3 className="w-4 h-4" /> {t('nav.analysis')}
+                <BarChart3 className="w-4 h-4" /> Analysis
             </button>
 
             {/* Help/Tutorial Button */}
