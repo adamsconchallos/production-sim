@@ -8,7 +8,8 @@ import {
   TrendingUp,
   Trophy,
   Download,
-  LogOut
+  LogOut,
+  HelpCircle
 } from 'lucide-react';
 
 import { supabase } from './lib/supabase';
@@ -28,8 +29,7 @@ import SubmissionModal from './components/SubmissionModal';
 import SimpleChart from './components/charts/SimpleChart';
 import Leaderboard from './components/Leaderboard';
 import Footer from './components/ui/Footer';
-import { useTranslation } from './contexts/LanguageContext';
-import LanguageSwitcher from './components/ui/LanguageSwitcher';
+import TutorialPage from './components/TutorialPage';
 
 // --- Root App: Auth Gate ---
 export default function App() {
@@ -85,9 +85,10 @@ export default function App() {
 
 // --- Planner App (Student / Demo) ---
 function StratFi({ session, logout, onExitDemo }) {
-  const { t } = useTranslation();
+
   const [view, setView] = useState('grid');
   const [showSetup, setShowSetup] = useState(!session); // hide setup in game mode
+  const [showTutorial, setShowTutorial] = useState(false);
 
   // --- Market Data ---
   const { scenarios, isLoadingData, usingDefaults, fetchMarketData } = useMarketData(session?.gameId);
@@ -393,10 +394,16 @@ function StratFi({ session, logout, onExitDemo }) {
             >
                 <BarChart3 className="w-4 h-4" /> {t('nav.analysis')}
             </button>
-            
-            <div className="mx-2 flex items-center">
-              <LanguageSwitcher />
-            </div>
+
+            {/* Help/Tutorial Button */}
+            <button
+                onClick={() => setShowTutorial(true)}
+                className="px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all text-slate-500 hover:text-blue-600 hover:bg-blue-50"
+                title="Help"
+            >
+                <HelpCircle className="w-4 h-4" />
+                <span className="hidden sm:inline">Help</span>
+            </button>
 
             {/* Download Button temporarily disabled or simplified */}
             <button
@@ -520,6 +527,15 @@ function StratFi({ session, logout, onExitDemo }) {
           session={session}
           gameData={gameData}
         />
+
+        {/* TUTORIAL MODAL */}
+        {showTutorial && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl max-w-6xl w-full h-[90vh] overflow-hidden shadow-2xl">
+              <TutorialPage onClose={() => setShowTutorial(false)} />
+            </div>
+          </div>
+        )}
 
         <Footer />
 

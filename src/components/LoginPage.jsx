@@ -1,10 +1,7 @@
 import { useState } from 'react';
 import { Calculator, LogIn, GraduationCap, User, UserPlus, Mail, Lock, Building, Briefcase } from 'lucide-react';
-import { useTranslation } from '../contexts/LanguageContext';
-import LanguageSwitcher from './ui/LanguageSwitcher';
 
 const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDemo, error }) => {
-  const { t } = useTranslation();
   const [mode, setMode] = useState('student'); // 'student' or 'teacher'
   const [teacherSubMode, setTeacherSubMode] = useState('login'); // 'login' or 'signup'
   
@@ -50,18 +47,15 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative">
-      <div className="absolute top-6 right-6">
-        <LanguageSwitcher />
-      </div>
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-slate-900 flex items-center justify-center gap-2">
             <Calculator className="w-8 h-8 text-indigo-600" />
-            {t('login.title')}
+            StratFi
           </h1>
-          <p className="text-slate-500 text-sm mt-1">{t('login.subtitle')}</p>
+          <p className="text-slate-500 text-sm mt-1">Strategy at Altitude</p>
         </div>
 
         {/* Card */}
@@ -76,7 +70,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              <User className="w-4 h-4" /> {t('login.student_tab')}
+              <User className="w-4 h-4" /> Student
             </button>
             <button
               onClick={() => setMode('teacher')}
@@ -86,7 +80,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              <GraduationCap className="w-4 h-4" /> {t('login.instructor_tab')}
+              <GraduationCap className="w-4 h-4" /> Instructor
             </button>
           </div>
 
@@ -96,7 +90,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
             {mode === 'student' ? (
               <>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('login.game_code')}</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Game Code</label>
                   <input
                     type="text"
                     value={joinCode}
@@ -108,7 +102,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('login.firm_name')}</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Firm Name</label>
                   <input
                     type="text"
                     value={firmName}
@@ -119,7 +113,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('login.pin')}</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">PIN</label>
                   <input
                     type="password"
                     value={pin}
@@ -139,21 +133,21 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
                     onClick={() => setTeacherSubMode('login')}
                     className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${teacherSubMode === 'login' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                   >
-                    {t('login.instructor_login')}
+                    Log In
                   </button>
                   <button
                     type="button"
                     onClick={() => setTeacherSubMode('signup')}
                     className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${teacherSubMode === 'signup' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                   >
-                    {t('login.instructor_signup')}
+                    Sign Up
                   </button>
                 </div>
 
                 {teacherSubMode === 'signup' && (
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('login.first_name')}</label>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">First Name</label>
                       <input
                         type="text"
                         value={firstName}
@@ -163,7 +157,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('login.last_name')}</label>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Last Name</label>
                       <input
                         type="text"
                         value={lastName}
@@ -176,7 +170,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
                 )}
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('login.email')}</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Email Address</label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
                     <input
@@ -191,7 +185,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('login.password')}</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Password</label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
                     <input
@@ -209,7 +203,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
                 {teacherSubMode === 'signup' && (
                   <>
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('login.institution')}</label>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Institution</label>
                       <div className="relative">
                         <Building className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
                         <input
@@ -223,7 +217,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('login.purpose')}</label>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Teaching Purpose</label>
                       <div className="relative">
                         <Briefcase className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
                         <select
@@ -258,12 +252,12 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
               className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors"
             >
               {mode === 'student' ? (
-                 <><LogIn className="w-4 h-4" /> {submitting ? t('login.signing_in') : t('login.sign_in')}</>
+                 <><LogIn className="w-4 h-4" /> {submitting ? 'Signing in...' : 'Sign In'}</>
               ) : (
                 teacherSubMode === 'login' ? (
-                  <><LogIn className="w-4 h-4" /> {submitting ? t('login.signing_in') : t('login.instructor_login')}</>
+                  <><LogIn className="w-4 h-4" /> {submitting ? 'Logging in...' : 'Log In'}</>
                 ) : (
-                  <><UserPlus className="w-4 h-4" /> {submitting ? t('login.signing_in') : t('login.create_account')}</>
+                  <><UserPlus className="w-4 h-4" /> {submitting ? 'Creating Account...' : 'Create Instructor Account'}</>
                 )
               )}
             </button>
@@ -276,9 +270,13 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
             onClick={onDemo}
             className="text-sm text-slate-400 hover:text-indigo-600 transition-colors"
           >
-            {t('login.demo')}
+            Try Demo Mode (no login)
           </button>
         </div>
+      </div>
+    </div>
+  );
+};
       </div>
     </div>
   );
