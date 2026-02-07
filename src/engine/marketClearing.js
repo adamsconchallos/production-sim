@@ -125,9 +125,10 @@ export function clearMarket(parameters, firmDecisions) {
  * @param {Object} firmState - {state: {balance sheet}, inventory_details, efficiency} or null for initial
  * @param {Object} gameSetup - initial balance sheet from game config
  * @param {Object} rates - {st, lt, tax}
+ * @param {Object} approvedLoans - {st: {rate: ...}, lt: {rate: ...}} or null
  * @returns {Object} {nextStart, inventoryDetails, nextEfficiency, financials}
  */
-export function computeFirmActualResults(firmDecision, clearingResults, firmState, gameSetup, rates) {
+export function computeFirmActualResults(firmDecision, clearingResults, firmState, gameSetup, rates, approvedLoans = null) {
   // Determine starting position
   const start = firmState?.state
     ? { ...firmState.state, rates }
@@ -167,7 +168,8 @@ export function computeFirmActualResults(firmDecision, clearingResults, firmStat
   });
 
   // Run the simulation engine with actual values
-  const result = calculateYear(start, actualDecision, prevEfficiency, startInventoryDetails, rates);
+  // Pass approvedLoans as loanTerms if provided (handled inside calculateYear)
+  const result = calculateYear(start, actualDecision, prevEfficiency, startInventoryDetails, rates, approvedLoans);
 
   return {
     nextStart: result.nextStart,

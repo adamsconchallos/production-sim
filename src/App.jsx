@@ -11,10 +11,12 @@ import {
   LogOut
 } from 'lucide-react';
 
+import { supabase } from './lib/supabase';
 import { useAuth } from './hooks/useAuth';
 import { calculateYear } from './engine/simulation';
 import { useMarketData } from './hooks/useMarketData';
 import { useLeaderboard } from './hooks/useLeaderboard';
+import { useLoanRequests } from './hooks/useLoanRequests';
 import { getGridRows } from './constants/gridRows';
 
 import LoginPage from './components/LoginPage';
@@ -28,7 +30,15 @@ import Leaderboard from './components/Leaderboard';
 
 // --- Root App: Auth Gate ---
 export default function App() {
-  const { session, loading, error, loginStudent, loginTeacher, logout } = useAuth();
+  const { 
+    session, 
+    loading, 
+    error, 
+    loginStudent, 
+    loginInstructor, 
+    signUpInstructor, 
+    logout 
+  } = useAuth();
   const [demoMode, setDemoMode] = useState(false);
 
   useEffect(() => {
@@ -48,7 +58,8 @@ export default function App() {
     return (
       <LoginPage
         onLoginStudent={loginStudent}
-        onLoginTeacher={loginTeacher}
+        onLoginInstructor={loginInstructor}
+        onSignUpInstructor={signUpInstructor}
         onDemo={() => setDemoMode(true)}
         error={error}
       />
@@ -80,6 +91,9 @@ function StratFi({ session, logout, onExitDemo }) {
   const [gameData, setGameData] = useState(null);
   const [history, setHistory] = useState([]); // Array of cleared firm_states
   const [lastState, setLastState] = useState(null); // The starting point for current round
+
+  // --- Loan Requests (NEW) ---
+  const { loanRequests } = useLoanRequests(session, gameData);
 
   // --- Decisions State (Current Round Only) ---
   const [decisions, setDecisions] = useState({
@@ -116,9 +130,12 @@ function StratFi({ session, logout, onExitDemo }) {
         return;
     }
 
-    import('./lib/supabase').then(async ({ supabase }) => {
-      if (!supabase) return;
+    if (!supabase) return;
 
+    let cancelled = false;
+
+    // 1. Fetch Initial Data
+    async function loadData() {
       // 1. Fetch Game Config
       const { data: game } = await supabase
         .from('games')
@@ -126,18 +143,17 @@ function StratFi({ session, logout, onExitDemo }) {
         .eq('id', session.gameId)
         .single();
 
+      if (cancelled) return;
+
       if (game) {
-        // If round opens, we might want to reset decisions if they were from a previous cleared round
-        if (gameData && game.current_round !== gameData.current_round && game.round_status === 'open') {
-             setDecisions({
-                qty: { A: 0, B: 0, C: 0 }, sales: { A: 0, B: 0, C: 0 }, price: { A: 33, B: 32, C: 31 },
-                inv: { machine: 0, labour: 0 },
-                finance: { newST: 0, newLT: 0, payST: 0, payLT: 0, div: 0 }
-             });
-        }
-        
         setGameData(game);
-        
+
+        // If round opens, reset decisions
+        // (This logic might be tricky if we re-fetch same data, so we might want to check against previous state, but inside async it's hard. 
+        //  However, setGameData will trigger re-renders. The decision reset logic was checking existing state.)
+        //  Simplified: We only load decisions once on mount. The reset logic should probably be in a separate effect or handled more carefully.
+        //  For now, I'll keep the loading logic here.
+
         // 2. Load History (Firm States)
         const { data: states } = await supabase
           .from('firm_state')
@@ -146,23 +162,20 @@ function StratFi({ session, logout, onExitDemo }) {
           .eq('firm_id', session.firmId)
           .order('round', { ascending: true });
 
-        // 3. Determine Last State (Start of Current Round)
+        if (cancelled) return;
+
+        // 3. Determine Last State
         if (states && states.length > 0) {
             setHistory(states);
-            // We want the state from Round N-1. 
-            // Since we seed Round 0, if current_round=1, we want Round 0 state.
-            // If current_round=2, we want Round 1 state.
             const prevRoundNum = game.current_round - 1;
             const prevRec = states.find(s => s.round === prevRoundNum);
             
             if (prevRec) {
                 setLastState({
                     ...prevRec,
-                    state: { ...prevRec.state, rates: game.rates } // Ensure current rates
+                    state: { ...prevRec.state, rates: game.rates } 
                 });
             } else {
-                // Fallback (Should not happen if Reset works, but safe fallback)
-                // Use the latest available state or initial setup
                 const latest = states[states.length - 1];
                 setLastState({
                     ...latest,
@@ -170,18 +183,16 @@ function StratFi({ session, logout, onExitDemo }) {
                 });
             }
         } else {
-            // No history at all? Use Game Setup as Round 0
             const initialState = {
                 state: { ...game.setup, rates: game.rates },
                 inventory_details: { A:{units:0,value:0}, B:{units:0,value:0}, C:{units:0,value:0} },
                 efficiency: 0
             };
             setLastState(initialState);
-            // Also set empty history so charts don't break
             setHistory([{ round: 0, ...initialState }]); 
         }
 
-        // 4. Load Existing Decisions for Current Round
+        // 4. Load Existing Decisions
         const { data: existingDec } = await supabase
           .from('decisions')
           .select('data')
@@ -190,11 +201,11 @@ function StratFi({ session, logout, onExitDemo }) {
           .eq('round', game.current_round)
           .single();
 
+        if (cancelled) return;
+
         if (existingDec?.data) {
           setDecisions(existingDec.data);
         } else {
-          // Reset decisions if new round and no draft saved
-          // (Unless we want to persist previous inputs? No, fresh start usually better)
           setDecisions({
              qty: { A: 0, B: 0, C: 0 }, sales: { A: 0, B: 0, C: 0 }, price: { A: 33, B: 32, C: 31 },
              inv: { machine: 0, labour: 0 },
@@ -202,7 +213,25 @@ function StratFi({ session, logout, onExitDemo }) {
           });
         }
       }
-    });
+    }
+
+    loadData();
+
+    // 2. Subscribe to Game Updates
+    const channel = supabase.channel('game_updates')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${session.gameId}` },
+        (payload) => {
+          setGameData(prev => prev ? { ...prev, ...payload.new } : payload.new);
+        }
+      )
+      .subscribe();
+
+    return () => {
+        cancelled = true;
+        supabase.removeChannel(channel);
+    };
   }, [session, demoSetup]); // Add demoSetup dependency so demo mode updates work
 
   // --- ENGINE: Current Round Projection ---
@@ -408,6 +437,8 @@ function StratFi({ session, logout, onExitDemo }) {
               updateVal={updateVal}
               gameData={gameData}
               history={history}
+              isGameMode={isGameMode}
+              loanRequests={loanRequests}
             />
 
             {/* SUBMISSION BUTTON */}

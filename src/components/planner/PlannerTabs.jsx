@@ -4,7 +4,7 @@ import OperationsTab from './OperationsTab';
 import InvestmentTab from './InvestmentTab';
 import FinanceTab from './FinanceTab';
 
-export default function PlannerTabs({ decisions, simulation, lastState, updateVal, gameData, history }) {
+export default function PlannerTabs({ decisions, simulation, lastState, updateVal, gameData, history, isGameMode, loanRequests }) {
   const [activeTab, setActiveTab] = useState('ops');
 
   const tabs = [
@@ -50,6 +50,8 @@ export default function PlannerTabs({ decisions, simulation, lastState, updateVa
             lastState={lastState} 
             updateVal={updateVal}
             gameData={gameData}
+            isGameMode={isGameMode}
+            loanRequests={loanRequests}
           />
         )}
         {activeTab === 'fin' && (

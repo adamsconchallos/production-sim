@@ -9,7 +9,7 @@ import {
 
 const DEFAULT_LIMITS = { machine: 1000, labour: 1000, material: 500 };
 
-export function calculateYear(start, decision, prevEfficiency = 0, startInventoryDetails, rates) {
+export function calculateYear(start, decision, prevEfficiency = 0, startInventoryDetails, rates, loanTerms = null) {
   // Ensure limits always exist
   if (!start.limits) start = { ...start, limits: DEFAULT_LIMITS };
 
@@ -89,7 +89,10 @@ export function calculateYear(start, decision, prevEfficiency = 0, startInventor
   const endST = start.stDebt - actualPayST + decision.finance.newST;
   const endLT = start.ltDebt - actualPayLT + decision.finance.newLT;
   // Interest on beginning-of-period balances (standard accounting convention)
-  const interest = (start.stDebt * (rates.st/100)) + (start.ltDebt * (rates.lt/100));
+  // Use per-firm rates if available (via loanTerms), otherwise global rates
+  const stRate = loanTerms?.st?.rate ?? rates.st;
+  const ltRate = loanTerms?.lt?.rate ?? rates.lt;
+  const interest = (start.stDebt * (stRate/100)) + (start.ltDebt * (ltRate/100));
   const depreciation = start.fixedAssets * DEPRECIATION_RATE;
   const trainingExp = decision.inv.labour;
   const opEx = depreciation + trainingExp;

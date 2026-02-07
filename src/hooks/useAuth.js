@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
 const SESSION_KEY = 'stratfi_session';
@@ -15,8 +15,59 @@ function getStoredSession() {
 
 export function useAuth() {
   const [session, setSession] = useState(getStoredSession);
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Synchronize Supabase Auth state
+  useEffect(() => {
+    async function getInitialSession() {
+      if (!supabase) {
+        setLoading(false);
+        return;
+      }
+
+      const { data: { session: sbSession } } = await supabase.auth.getSession();
+      
+      if (sbSession) {
+        // If we have a Supabase session, verify if we need to update our local state
+        const stored = getStoredSession();
+        if (!stored || stored.role !== 'teacher' || stored.userId !== sbSession.user.id) {
+          const teacherSession = {
+            role: 'teacher',
+            userId: sbSession.user.id,
+            email: sbSession.user.email,
+            // We might want to fetch profile data here too
+          };
+          setSession(teacherSession);
+          localStorage.setItem(SESSION_KEY, JSON.stringify(teacherSession));
+        }
+      }
+      setLoading(false);
+    }
+
+    getInitialSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, sbSession) => {
+      if (sbSession) {
+        const teacherSession = {
+          role: 'teacher',
+          userId: sbSession.user.id,
+          email: sbSession.user.email,
+        };
+        setSession(teacherSession);
+        localStorage.setItem(SESSION_KEY, JSON.stringify(teacherSession));
+      } else {
+        // Only clear if the current session is a teacher session
+        const stored = getStoredSession();
+        if (stored && stored.role === 'teacher') {
+          setSession(null);
+          localStorage.removeItem(SESSION_KEY);
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const loginStudent = useCallback(async (joinCode, firmName, pin) => {
     if (!supabase) {
@@ -73,7 +124,53 @@ export function useAuth() {
     return newSession;
   }, []);
 
-  const loginTeacher = useCallback(async (joinCode, teacherPin) => {
+  const signUpInstructor = useCallback(async (email, password, metadata) => {
+    if (!supabase) throw new Error('Supabase not configured');
+    setError(null);
+
+    const { data, error: signUpErr } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          first_name: metadata.firstName,
+          last_name: metadata.lastName,
+          institution: metadata.institution,
+          purpose: metadata.purpose
+        }
+      }
+    });
+
+    if (signUpErr) {
+      setError(signUpErr.message);
+      throw signUpErr;
+    }
+
+    // Profile creation is handled by the database trigger 'handle_new_user'
+    // using the metadata provided in the options above.
+
+    return data;
+  }, []);
+
+  const loginInstructor = useCallback(async (email, password) => {
+    if (!supabase) throw new Error('Supabase not configured');
+    setError(null);
+
+    const { data, error: loginErr } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (loginErr) {
+      setError(loginErr.message);
+      throw loginErr;
+    }
+
+    return data;
+  }, []);
+
+  // Legacy teacher login (for backward compatibility if needed, or we can remove it)
+  const loginTeacherLegacy = useCallback(async (joinCode, teacherPin) => {
     if (!supabase) {
       const msg = 'Supabase not configured. Check environment variables.';
       setError(msg);
@@ -111,11 +208,23 @@ export function useAuth() {
     return newSession;
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    if (session?.role === 'teacher' && supabase) {
+      await supabase.auth.signOut();
+    }
     localStorage.removeItem(SESSION_KEY);
     setSession(null);
     setError(null);
-  }, []);
+  }, [session]);
 
-  return { session, loading, error, loginStudent, loginTeacher, logout };
+  return { 
+    session, 
+    loading, 
+    error, 
+    loginStudent, 
+    signUpInstructor, 
+    loginInstructor, 
+    loginTeacherLegacy, 
+    logout 
+  };
 }

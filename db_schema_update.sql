@@ -29,6 +29,7 @@ CREATE POLICY "Allow public delete games" ON games FOR DELETE USING (true);
 
 -- 2. firms table
 ALTER TABLE firms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE firms ADD COLUMN IF NOT EXISTS students TEXT;
 CREATE POLICY "Allow public select firms" ON firms FOR SELECT USING (true);
 CREATE POLICY "Allow public insert firms" ON firms FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update firms" ON firms FOR UPDATE USING (true);

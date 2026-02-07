@@ -6,7 +6,17 @@ import { formatVal } from '../utils/formatters';
 
 const PlannerGrid = ({ decisions, simulation, updateVal, collapsed, toggleSection, history = [], gameData }) => {
   const currentRound = gameData?.current_round || 1;
+  const maxRounds = gameData?.max_rounds || 3;
   const isCleared = gameData?.round_status === 'cleared';
+
+  // Determine which rounds to show in the grid columns
+  const rounds = useMemo(() => {
+    // Show history + current + up to 2 projections, capped by maxRounds
+    const end = Math.min(maxRounds, Math.max(currentRound + 2, 3));
+    const r = [];
+    for (let i = 1; i <= end; i++) r.push(i);
+    return r;
+  }, [currentRound, maxRounds]);
 
   const gridRows = useMemo(() => {
     const rawRows = [
@@ -91,7 +101,7 @@ const PlannerGrid = ({ decisions, simulation, updateVal, collapsed, toggleSectio
           <thead>
             <tr className="bg-slate-100 text-slate-600 uppercase text-xs tracking-wider">
               <th className="p-3 text-left w-48 border-r border-slate-200 font-bold">Metric</th>
-              {[1, 2, 3].map(roundNum => {
+              {rounds.map(roundNum => {
                 const isPast = roundNum < currentRound || (roundNum === currentRound && isCleared);
                 const isCurrent = roundNum === currentRound;
                 
@@ -120,7 +130,7 @@ const PlannerGrid = ({ decisions, simulation, updateVal, collapsed, toggleSectio
                     className="bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors"
                     onClick={() => toggleSection(row.section)}
                   >
-                    <td colSpan={4} className="p-2 pl-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-y border-slate-200">
+                    <td colSpan={rounds.length + 1} className="p-2 pl-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-y border-slate-200">
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2">
                           {isCollapsed ? <ChevronRight className="w-4 h-4"/> : <ChevronDown className="w-4 h-4"/>}
@@ -145,7 +155,7 @@ const PlannerGrid = ({ decisions, simulation, updateVal, collapsed, toggleSectio
               if (row.type === 'spacer') {
                 return (
                   <tr key={idx}>
-                    <td colSpan={4} className="p-1 border-r border-slate-200"></td>
+                    <td colSpan={rounds.length + 1} className="p-1 border-r border-slate-200"></td>
                   </tr>
                 );
               }
@@ -158,7 +168,7 @@ const PlannerGrid = ({ decisions, simulation, updateVal, collapsed, toggleSectio
                     {row.tooltip && <Tooltip text={row.tooltip} />}
                   </td>
 
-                  {[1, 2, 3].map(roundNum => {
+                  {rounds.map(roundNum => {
                     const isPast = roundNum < currentRound || (roundNum === currentRound && isCleared);
                     const isCurrent = roundNum === currentRound;
                     
