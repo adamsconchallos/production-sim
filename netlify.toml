@@ -12,6 +12,13 @@
   # Node version
   NODE_VERSION = "20"
 
+# Force HTTPS for all traffic
+[[redirects]]
+  from = "http://mutandislab.com/*"
+  to = "https://mutandislab.com/:splat"
+  status = 301
+  force = true
+
 # Redirect rules for SPA (single-page application)
 [[redirects]]
   from = "/*"
@@ -41,7 +48,7 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "geolocation=(), microphone=(), camera=()"
     # Content Security Policy - adjust if needed
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://achustvdupyvrwanjbbi.supabase.co https://docs.google.com; frame-ancestors 'none';"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://achustvdupyvrwanjbbi.supabase.co wss://achustvdupyvrwanjbbi.supabase.co https://docs.google.com; frame-ancestors 'none';"
 
 # Cache static assets
 [[headers]]
