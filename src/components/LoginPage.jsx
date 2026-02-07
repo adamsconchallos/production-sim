@@ -277,9 +277,5 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
     </div>
   );
 };
-      </div>
-    </div>
-  );
-};
 
 export default LoginPage;
