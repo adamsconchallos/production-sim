@@ -18,16 +18,20 @@ import {
   ChevronLeft,
   Calendar,
   Key,
-  Upload
+  Upload,
+  TrendingUp
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { clearMarket as runClearMarket, computeFirmActualResults, calculateAR1Forecast } from '../engine/marketClearing';
 import { DEFAULT_SCENARIOS } from '../constants/defaults';
 import { useInstructorLeaderboard } from '../hooks/useInstructorLeaderboard';
+import { useMarketData } from '../hooks/useMarketData';
 import BalanceSheetEditor from './teacher/BalanceSheetEditor';
 import DemandCurveEditor from './teacher/DemandCurveEditor';
 import LoanReviewPanel from './teacher/LoanReviewPanel';
+import SupplyCurveChart from './teacher/SupplyCurveChart';
 import InstructorLeaderboard from './InstructorLeaderboard';
+import MarketBrief from './MarketBrief';
 import Footer from './ui/Footer';
 
 function generatePin() {
@@ -275,6 +279,7 @@ function GameManagement({ gameId, session, onBack, logout }) {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('roster');
+  const [supplyTab, setSupplyTab] = useState('A');
   const [newFirmName, setNewFirmName] = useState('');
   const [message, setMessage] = useState(null);
   const [clearingData, setClearingData] = useState(null);
@@ -287,6 +292,9 @@ function GameManagement({ gameId, session, onBack, logout }) {
 
   // Leaderboard Data
   const { leaderboard, loading: loadingLeaderboard, refresh: refreshLeaderboard } = useInstructorLeaderboard(gameId);
+
+  // Market Data (Same as student)
+  const { scenarios, isLoadingData, usingDefaults, fetchMarketData } = useMarketData(gameId);
 
   const fetchGame = useCallback(async () => {
     if (!supabase || !gameId) return;
@@ -319,7 +327,7 @@ function GameManagement({ gameId, session, onBack, logout }) {
     if (round == null) return;
     const { data } = await supabase
       .from('decisions')
-      .select('firm_id, round, submitted_at')
+      .select('firm_id, round, submitted_at, data')
       .eq('game_id', gameId)
       .eq('round', round);
     if (data) setSubmissions(data);
@@ -342,7 +350,7 @@ function GameManagement({ gameId, session, onBack, logout }) {
           .from('firms').select('*').eq('game_id', gameId).order('created_at');
         if (!cancelled && firmsData) setFirms(firmsData);
         const { data: subsData } = await supabase
-          .from('decisions').select('firm_id, round, submitted_at')
+          .from('decisions').select('firm_id, round, submitted_at, data')
           .eq('game_id', gameId).eq('round', gameData.current_round);
         if (!cancelled && subsData) setSubmissions(subsData);
       }
@@ -981,6 +989,7 @@ function GameManagement({ gameId, session, onBack, logout }) {
         <div className="flex bg-white p-1 rounded-lg gap-1 border border-slate-200 shadow-sm w-fit">
           {[
             { key: 'roster', label: 'Roster', icon: <Users className="w-4 h-4" /> },
+            { key: 'brief', label: 'Brief', icon: <TrendingUp className="w-4 h-4" /> },
             { key: 'round', label: 'Control', icon: <Play className="w-4 h-4" /> },
             { key: 'loans', label: 'Loans', icon: <Banknote className="w-4 h-4" />, disabled: !(game?.round_status === 'closed' || game?.round_status === 'loans_reviewed') },
             { key: 'leaderboard', label: 'Ranking', icon: <Trophy className="w-4 h-4" /> },
@@ -1045,6 +1054,15 @@ function GameManagement({ gameId, session, onBack, logout }) {
           </div>
         )}
 
+        {tab === 'brief' && (
+          <MarketBrief 
+            scenarios={scenarios} 
+            loading={isLoadingData} 
+            usingDefaults={usingDefaults} 
+            onRefresh={fetchMarketData} 
+          />
+        )}
+
         {tab === 'round' && (
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
              <div className="grid grid-cols-3 gap-4 mb-6 text-center">
@@ -1052,6 +1070,31 @@ function GameManagement({ gameId, session, onBack, logout }) {
               <div className="bg-slate-50 rounded-lg p-4"><div className="text-2xl font-bold text-slate-900 capitalize">{game?.round_status}</div><div className="text-[10px] text-slate-500 uppercase font-bold">Status</div></div>
               <div className="bg-slate-50 rounded-lg p-4"><div className="text-2xl font-bold text-slate-900">{submissions.length} / {firms.length}</div><div className="text-[10px] text-slate-500 uppercase font-bold">Submitted</div></div>
             </div>
+
+            {/* Supply Curve Section */}
+            {submissions.length > 0 && (
+              <div className="mb-8">
+                <div className="flex justify-between items-center mb-4">
+                   <h4 className="text-sm font-bold text-slate-700">Industry Supply Analysis</h4>
+                   <div className="flex bg-slate-100 p-0.5 rounded-lg">
+                      {['A', 'B', 'C'].map(p => (
+                        <button 
+                          key={p} 
+                          onClick={() => setSupplyTab(p)}
+                          className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${supplyTab === p ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                          Product {p}
+                        </button>
+                      ))}
+                   </div>
+                </div>
+                <SupplyCurveChart submissions={submissions} product={supplyTab} />
+                <p className="mt-2 text-[10px] text-slate-400">
+                  This chart shows the cumulative industry supply at different price points for the current round. 
+                  Prices are sorted from lowest to highest to form the supply curve.
+                </p>
+              </div>
+            )}
 
             <div className="flex gap-3 flex-wrap">
               {(game?.round_status === 'setup' || game?.round_status === 'cleared') && game?.current_round < game?.max_rounds && (

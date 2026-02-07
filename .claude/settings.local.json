@@ -6,7 +6,8 @@
       "Bash(npx vite build:*)",
       "Bash(git add:*)",
       "Bash(test:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(node scripts/submit_decisions.cjs:*)"
     ]
   }
 }
