@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Calculator, LogIn, GraduationCap, User, UserPlus, Mail, Lock, Building, Briefcase } from 'lucide-react';
+import { LogIn, GraduationCap, User, UserPlus, Mail, Lock, Building, Briefcase } from 'lucide-react';
 
 const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDemo, error }) => {
   const [mode, setMode] = useState('student'); // 'student' or 'teacher'
   const [teacherSubMode, setTeacherSubMode] = useState('login'); // 'login' or 'signup'
-  
+
   // Shared
   const [submitting, setSubmitting] = useState(false);
 
@@ -47,26 +47,28 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#1a365d] to-[#2d5a7b] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center justify-center gap-2">
-            <Calculator className="w-8 h-8 text-indigo-600" />
-            StratFi
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <img src="/logo_transparent.png" alt="MutandisLab Logo" className="h-16 w-auto" />
+          </div>
+          <h1 className="text-3xl font-bold text-white">
+            MutandisLab
           </h1>
-          <p className="text-slate-500 text-sm mt-1">Strategy at Altitude</p>
+          <p className="text-[#4fd1c5] text-sm mt-1 font-medium">Strategy at Altitude</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden">
           {/* Mode Toggle */}
-          <div className="flex border-b border-slate-200">
+          <div className="flex border-b border-slate-200 bg-slate-50">
             <button
               onClick={() => setMode('student')}
               className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${
                 mode === 'student'
-                  ? 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-500'
+                  ? 'bg-white text-[#1a365d] border-b-2 border-[#4fd1c5]'
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
@@ -76,7 +78,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
               onClick={() => setMode('teacher')}
               className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${
                 mode === 'teacher'
-                  ? 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-500'
+                  ? 'bg-white text-[#1a365d] border-b-2 border-[#4fd1c5]'
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
@@ -95,7 +97,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
                     type="text"
                     value={joinCode}
                     onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                    className="w-full border border-slate-300 rounded-lg p-3 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none text-lg tracking-widest text-center font-mono"
+                    className="w-full border border-slate-300 rounded-lg p-3 focus:border-[#4fd1c5] focus:ring-2 focus:ring-[#4fd1c5]/20 outline-none text-lg tracking-widest text-center font-mono"
                     placeholder="ABC123"
                     maxLength={6}
                     required
@@ -107,7 +109,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
                     type="text"
                     value={firmName}
                     onChange={(e) => setFirmName(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg p-3 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none"
+                    className="w-full border border-slate-300 rounded-lg p-3 focus:border-[#4fd1c5] focus:ring-2 focus:ring-[#4fd1c5]/20 outline-none"
                     placeholder="Your team name"
                     required
                   />
@@ -118,7 +120,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
                     type="password"
                     value={pin}
                     onChange={(e) => setPin(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg p-3 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none text-lg tracking-widest text-center font-mono"
+                    className="w-full border border-slate-300 rounded-lg p-3 focus:border-[#4fd1c5] focus:ring-2 focus:ring-[#4fd1c5]/20 outline-none text-lg tracking-widest text-center font-mono"
                     placeholder="****"
                     required
                   />
@@ -131,14 +133,14 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
                   <button
                     type="button"
                     onClick={() => setTeacherSubMode('login')}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${teacherSubMode === 'login' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${teacherSubMode === 'login' ? 'bg-white text-[#1a365d] shadow-sm' : 'text-slate-500'}`}
                   >
                     Log In
                   </button>
                   <button
                     type="button"
                     onClick={() => setTeacherSubMode('signup')}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${teacherSubMode === 'signup' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${teacherSubMode === 'signup' ? 'bg-white text-[#1a365d] shadow-sm' : 'text-slate-500'}`}
                   >
                     Sign Up
                   </button>
@@ -152,7 +154,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
                         type="text"
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:border-indigo-500 outline-none"
+                        className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:border-[#4fd1c5] focus:ring-2 focus:ring-[#4fd1c5]/20 outline-none"
                         required
                       />
                     </div>
@@ -162,7 +164,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
                         type="text"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:border-indigo-500 outline-none"
+                        className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:border-[#4fd1c5] focus:ring-2 focus:ring-[#4fd1c5]/20 outline-none"
                         required
                       />
                     </div>
@@ -177,7 +179,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full border border-slate-300 rounded-lg p-2.5 pl-10 text-sm focus:border-indigo-500 outline-none"
+                      className="w-full border border-slate-300 rounded-lg p-2.5 pl-10 text-sm focus:border-[#4fd1c5] focus:ring-2 focus:ring-[#4fd1c5]/20 outline-none"
                       placeholder="teacher@university.edu"
                       required
                     />
@@ -192,7 +194,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full border border-slate-300 rounded-lg p-2.5 pl-10 text-sm focus:border-indigo-500 outline-none"
+                      className="w-full border border-slate-300 rounded-lg p-2.5 pl-10 text-sm focus:border-[#4fd1c5] focus:ring-2 focus:ring-[#4fd1c5]/20 outline-none"
                       placeholder="••••••••"
                       minLength={6}
                       required
@@ -210,7 +212,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
                           type="text"
                           value={institution}
                           onChange={(e) => setInstitution(e.target.value)}
-                          className="w-full border border-slate-300 rounded-lg p-2.5 pl-10 text-sm focus:border-indigo-500 outline-none"
+                          className="w-full border border-slate-300 rounded-lg p-2.5 pl-10 text-sm focus:border-[#4fd1c5] focus:ring-2 focus:ring-[#4fd1c5]/20 outline-none"
                           placeholder="University or School"
                           required
                         />
@@ -223,7 +225,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
                         <select
                           value={purpose}
                           onChange={(e) => setPurpose(e.target.value)}
-                          className="w-full border border-slate-300 rounded-lg p-2.5 pl-10 text-sm focus:border-indigo-500 outline-none bg-white appearance-none"
+                          className="w-full border border-slate-300 rounded-lg p-2.5 pl-10 text-sm focus:border-[#4fd1c5] focus:ring-2 focus:ring-[#4fd1c5]/20 outline-none bg-white appearance-none"
                           required
                         >
                           <option value="">Select a purpose...</option>
@@ -249,7 +251,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors"
+              className="w-full bg-[#4fd1c5] hover:bg-[#38b2ac] disabled:bg-[#4fd1c5]/50 text-[#1a365d] py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors shadow-lg hover:shadow-xl"
             >
               {mode === 'student' ? (
                  <><LogIn className="w-4 h-4" /> {submitting ? 'Signing in...' : 'Sign In'}</>
@@ -268,7 +270,7 @@ const LoginPage = ({ onLoginStudent, onLoginInstructor, onSignUpInstructor, onDe
         <div className="text-center mt-4">
           <button
             onClick={onDemo}
-            className="text-sm text-slate-400 hover:text-indigo-600 transition-colors"
+            className="text-sm text-[#4fd1c5] hover:text-white transition-colors font-medium"
           >
             Try Demo Mode (no login)
           </button>

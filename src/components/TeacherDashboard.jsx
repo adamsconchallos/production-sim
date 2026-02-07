@@ -1,18 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  Calculator, 
-  LogOut, 
-  Plus, 
-  Users, 
-  Play, 
-  Square, 
-  Zap, 
-  RefreshCw, 
-  Trash2, 
-  Copy, 
-  RotateCcw, 
-  Settings, 
-  Trophy, 
+import {
+  LogOut,
+  Plus,
+  Users,
+  Play,
+  Square,
+  Zap,
+  RefreshCw,
+  Trash2,
+  Copy,
+  RotateCcw,
+  Settings,
+  Trophy,
   Banknote,
   LayoutGrid,
   ChevronLeft,
@@ -156,18 +155,18 @@ const TeacherDashboard = ({ session, logout }) => {
 
   if (!selectedGameId) {
     return (
-      <div className="min-h-screen bg-slate-50 p-6">
-        <header className="max-w-5xl mx-auto mb-8 flex justify-between items-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 p-6">
+        <header className="max-w-5xl mx-auto mb-8 flex justify-between items-center bg-[#1a365d] p-6 rounded-xl shadow-lg">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
-              <Calculator className="w-8 h-8 text-indigo-600" />
-              StratFi Instructor
+            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+              <img src="/logo_transparent.png" alt="MutandisLab Logo" className="h-10 w-auto" />
+              MutandisLab Instructor
             </h1>
-            <p className="text-slate-500">Welcome back, {session.email}</p>
+            <p className="text-[#4fd1c5] mt-1">Welcome back, {session.email}</p>
           </div>
           <button
             onClick={logout}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:text-red-600 hover:bg-red-50 transition-all font-bold"
+            className="flex items-center gap-2 px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-300 hover:text-red-400 hover:bg-red-900/30 transition-all font-bold"
           >
             <LogOut className="w-4 h-4" /> Sign Out
           </button>
@@ -180,15 +179,15 @@ const TeacherDashboard = ({ session, logout }) => {
             </h2>
             <button
               onClick={() => setShowCreateForm(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-sm transition-all"
+              className="bg-[#4fd1c5] hover:bg-[#38b2ac] text-[#1a365d] px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-sm transition-all"
             >
               <Plus className="w-4 h-4" /> Create New Game
             </button>
           </div>
 
           {showCreateForm && (
-            <div className="bg-white p-6 rounded-xl border border-indigo-200 shadow-md mb-8 animate-in fade-in slide-in-from-top-4">
-              <h3 className="font-bold text-indigo-900 mb-4">Launch New Simulation</h3>
+            <div className="bg-white p-6 rounded-xl border border-[#4fd1c5] shadow-md mb-8 animate-in fade-in slide-in-from-top-4">
+              <h3 className="font-bold text-[#1a365d] mb-4">Launch New Simulation</h3>
               <form onSubmit={handleCreateGame} className="flex gap-4">
                 <input
                   type="text"
@@ -196,10 +195,10 @@ const TeacherDashboard = ({ session, logout }) => {
                   placeholder="Game Name (e.g., Spring 2026 Section A)"
                   value={newGameName}
                   onChange={(e) => setNewGameName(e.target.value)}
-                  className="flex-1 border border-slate-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="flex-1 border border-slate-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-[#4fd1c5] focus:border-[#4fd1c5]"
                   required
                 />
-                <button type="submit" className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-700">
+                <button type="submit" className="bg-[#4fd1c5] text-[#1a365d] px-6 py-2 rounded-lg font-bold hover:bg-[#38b2ac]">
                   Create Game
                 </button>
                 <button 
@@ -229,10 +228,10 @@ const TeacherDashboard = ({ session, logout }) => {
                 <button
                   key={g.id}
                   onClick={() => setSelectedGameId(g.id)}
-                  className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 text-left transition-all group"
+                  className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-[#4fd1c5] text-left transition-all group"
                 >
                   <div className="flex justify-between items-start mb-4">
-                    <h3 className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{g.name}</h3>
+                    <h3 className="font-bold text-slate-900 group-hover:text-[#1a365d] transition-colors">{g.name}</h3>
                     <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
                       g.round_status === 'open' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
                     }`}>
@@ -241,7 +240,7 @@ const TeacherDashboard = ({ session, logout }) => {
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <Key className="w-3.5 h-3.5" /> Join Code: <span className="font-mono font-bold text-indigo-600">{g.join_code}</span>
+                      <Key className="w-3.5 h-3.5" /> Join Code: <span className="font-mono font-bold text-[#4fd1c5]">{g.join_code}</span>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-slate-500">
                       <Play className="w-3.5 h-3.5" /> Round: <span className="font-bold text-slate-700">{g.current_round}</span>
@@ -469,22 +468,22 @@ function GameManagement({ gameId, session, onBack, logout }) {
   if (loading) return <div className="p-10 text-center text-slate-400">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4">
-      <header className="max-w-5xl mx-auto mb-6 flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 p-4">
+      <header className="max-w-5xl mx-auto mb-6 flex justify-between items-center bg-[#1a365d] p-4 rounded-xl shadow-lg">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500"><ChevronLeft className="w-5 h-5" /></button>
+          <button onClick={onBack} className="p-2 hover:bg-slate-700 rounded-lg text-slate-300"><ChevronLeft className="w-5 h-5" /></button>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">{game?.name}</h1>
-            <div className="text-xs text-slate-500">Code: <span className="font-mono font-bold text-indigo-600">{game?.join_code}</span> &middot; Round {game?.current_round}</div>
+            <h1 className="text-xl font-bold text-white">{game?.name}</h1>
+            <div className="text-xs text-slate-300">Code: <span className="font-mono font-bold text-[#4fd1c5]">{game?.join_code}</span> &middot; Round {game?.current_round}</div>
           </div>
         </div>
-        <button onClick={logout} className="p-2 text-slate-400 hover:text-red-600"><LogOut className="w-5 h-5" /></button>
+        <button onClick={logout} className="p-2 text-slate-300 hover:text-red-400"><LogOut className="w-5 h-5" /></button>
       </header>
 
       <main className="max-w-5xl mx-auto space-y-6">
         <div className="flex bg-white p-1 rounded-lg gap-1 border border-slate-200 shadow-sm w-fit">
           {[{key:'roster',label:'Roster',icon:<Users className="w-4 h-4"/>},{key:'brief',label:'Brief',icon:<TrendingUp className="w-4 h-4"/>},{key:'round',label:'Control',icon:<Play className="w-4 h-4"/>},{key:'loans',label:'Loans',icon:<Banknote className="w-4 h-4"/>,disabled:!(game?.round_status==='closed'||game?.round_status==='loans_reviewed')},{key:'leaderboard',label:'Ranking',icon:<Trophy className="w-4 h-4"/>},{key:'setup',label:'Settings',icon:<Settings className="w-4 h-4"/>}].map(t => !t.disabled && (
-            <button key={t.key} onClick={() => setTab(t.key)} className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 ${tab === t.key ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:text-slate-700'}`}>{t.icon} {t.label}</button>
+            <button key={t.key} onClick={() => setTab(t.key)} className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 ${tab === t.key ? 'bg-[#4fd1c5]/10 text-[#1a365d]' : 'text-slate-500 hover:text-slate-700'}`}>{t.icon} {t.label}</button>
           ))}
         </div>
 
@@ -493,19 +492,19 @@ function GameManagement({ gameId, session, onBack, logout }) {
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-bold text-slate-700">Firm Roster</h3>
               <div className="flex gap-2">
-                <button onClick={downloadExampleCSV} className="text-xs text-indigo-600 underline">Example</button>
+                <button onClick={downloadExampleCSV} className="text-xs text-[#4fd1c5] underline hover:text-[#38b2ac]">Example</button>
                 <input type="file" id="csv-upload" className="hidden" accept=".csv" onChange={handleFileUpload} />
                 <label htmlFor="csv-upload" className="cursor-pointer bg-slate-100 px-3 py-1 rounded text-xs font-bold flex items-center gap-1"><Upload className="w-3 h-3"/> Upload</label>
               </div>
             </div>
             <div className="flex gap-2 mb-6">
               <input type="text" value={newFirmName} onChange={e => setNewFirmName(e.target.value)} className="flex-1 border rounded px-3 py-2 text-sm" placeholder="New firm name..." />
-              <button onClick={addFirm} className="bg-indigo-600 text-white px-4 py-2 rounded text-sm font-bold">Add</button>
+              <button onClick={addFirm} className="bg-[#4fd1c5] text-[#1a365d] px-4 py-2 rounded text-sm font-bold hover:bg-[#38b2ac]">Add</button>
             </div>
             <table className="w-full text-sm">
               <thead><tr className="border-b text-slate-500 text-xs uppercase"><th className="text-left p-2">Name</th><th className="text-left p-2">Students</th><th className="text-left p-2">PIN</th><th className="text-right p-2">Actions</th></tr></thead>
               <tbody>{firms.map(f => (
-                <tr key={f.id} className="border-b hover:bg-slate-50"><td className="p-2 font-medium">{f.name}</td><td className="p-2 text-slate-500">{f.students || '-'}</td><td className="p-2 font-mono text-indigo-600">{f.pin}</td><td className="p-2 text-right"><button onClick={() => deleteFirm(f.id, f.name)} className="text-slate-400 hover:text-red-600"><Trash2 className="w-4 h-4"/></button></td></tr>
+                <tr key={f.id} className="border-b hover:bg-slate-50"><td className="p-2 font-medium">{f.name}</td><td className="p-2 text-slate-500">{f.students || '-'}</td><td className="p-2 font-mono text-[#4fd1c5]">{f.pin}</td><td className="p-2 text-right"><button onClick={() => deleteFirm(f.id, f.name)} className="text-slate-400 hover:text-red-600"><Trash2 className="w-4 h-4"/></button></td></tr>
               ))}</tbody>
             </table>
           </div>
@@ -522,14 +521,14 @@ function GameManagement({ gameId, session, onBack, logout }) {
             </div>
             {submissions.length > 0 && (
               <div className="mb-8">
-                <div className="flex justify-between mb-4"><h4 className="font-bold">Supply Curve</h4><div className="flex gap-1">{['A','B','C'].map(p => <button key={p} onClick={() => setSupplyTab(p)} className={`px-3 py-1 rounded text-xs ${supplyTab===p?'bg-indigo-600 text-white':'bg-slate-100'}`}>Product {p}</button>)}</div></div>
+                <div className="flex justify-between mb-4"><h4 className="font-bold">Supply Curve</h4><div className="flex gap-1">{['A','B','C'].map(p => <button key={p} onClick={() => setSupplyTab(p)} className={`px-3 py-1 rounded text-xs ${supplyTab===p?'bg-[#4fd1c5] text-[#1a365d]':'bg-slate-100'}`}>Product {p}</button>)}</div></div>
                 <SupplyCurveChart submissions={submissions} product={supplyTab} />
               </div>
             )}
             <div className="flex gap-2">
               {game?.round_status !== 'open' && game?.current_round < 5 && <button onClick={openRound} className="bg-emerald-600 text-white px-4 py-2 rounded font-bold">Open Round {game?.current_round + 1}</button>}
               {game?.round_status === 'open' && <button onClick={closeSubmissions} className="bg-amber-600 text-white px-4 py-2 rounded font-bold">Close Round</button>}
-              {game?.round_status === 'loans_reviewed' && <button onClick={clearMarket} className="bg-indigo-600 text-white px-4 py-2 rounded font-bold">Clear Market</button>}
+              {game?.round_status === 'loans_reviewed' && <button onClick={clearMarket} className="bg-[#4fd1c5] text-[#1a365d] px-4 py-2 rounded font-bold hover:bg-[#38b2ac]">Clear Market</button>}
               <button onClick={resetGame} className="text-red-600 px-4 py-2">Reset</button>
             </div>
           </div>

@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
 import {
-  Calculator,
   Settings,
   ClipboardList,
   BarChart3,
@@ -45,7 +44,7 @@ export default function App() {
   const [demoMode, setDemoMode] = useState(false);
 
   useEffect(() => {
-    document.title = "StratFi - Strategy at Altitude";
+    document.title = "MutandisLab - Strategy at Altitude";
   }, []);
 
   if (loading) {
@@ -354,43 +353,43 @@ function StratFi({ session, logout, onExitDemo }) {
       `}</style>
 
       {/* HEADER */}
-      <header className="max-w-7xl mx-auto mb-6 flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+      <header className="max-w-7xl mx-auto mb-6 flex justify-between items-center bg-[#1a365d] p-4 rounded-xl shadow-lg border border-slate-700">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Calculator className="w-6 h-6 text-indigo-600" />
-            StratFi <span className="text-sm font-normal text-slate-400">| Strategy at Altitude</span>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+            <img src="/logo_transparent.png" alt="MutandisLab Logo" className="h-8 w-auto" />
+            MutandisLab <span className="text-sm font-normal text-[#4fd1c5]">| Strategy at Altitude</span>
           </h1>
           {isGameMode && (
-            <div className="text-xs text-slate-500 mt-1">
+            <div className="text-xs text-slate-300 mt-1">
               {session.firmName} &middot; {session.gameName} &middot; {roundLabel}
-              {!roundOpen && <span className="ml-2 text-amber-600 font-bold">Submissions Closed</span>}
+              {!roundOpen && <span className="ml-2 text-amber-400 font-bold">Submissions Closed</span>}
             </div>
           )}
         </div>
-        <div className="flex bg-slate-100 p-1 rounded-lg gap-1">
+        <div className="flex bg-slate-800/50 p-1 rounded-lg gap-1">
             <button
                 onClick={() => setView('market')}
-                className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${view === 'market' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${view === 'market' ? 'bg-[#4fd1c5] shadow text-slate-900' : 'text-slate-300 hover:text-white hover:bg-slate-700'}`}
             >
                 <TrendingUp className="w-4 h-4" /> Brief
             </button>
             <button
                 onClick={() => setView('grid')}
-                className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${view === 'grid' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${view === 'grid' ? 'bg-[#4fd1c5] shadow text-slate-900' : 'text-slate-300 hover:text-white hover:bg-slate-700'}`}
             >
                 <Table className="w-4 h-4" /> Planner
             </button>
             {isGameMode && (
               <button
                   onClick={() => setView('leaderboard')}
-                  className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${view === 'leaderboard' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+                  className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${view === 'leaderboard' ? 'bg-[#4fd1c5] shadow text-slate-900' : 'text-slate-300 hover:text-white hover:bg-slate-700'}`}
               >
                   <Trophy className="w-4 h-4" /> Leaderboard
               </button>
             )}
             <button
                 onClick={() => setView('charts')}
-                className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${view === 'charts' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${view === 'charts' ? 'bg-[#4fd1c5] shadow text-slate-900' : 'text-slate-300 hover:text-white hover:bg-slate-700'}`}
             >
                 <BarChart3 className="w-4 h-4" /> Analysis
             </button>
@@ -398,7 +397,7 @@ function StratFi({ session, logout, onExitDemo }) {
             {/* Help/Tutorial Button */}
             <button
                 onClick={() => setShowTutorial(true)}
-                className="px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all text-slate-500 hover:text-blue-600 hover:bg-blue-50"
+                className="px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all text-slate-300 hover:text-[#4fd1c5] hover:bg-slate-700"
                 title="Help & Tutorial"
             >
                 <HelpCircle className="w-4 h-4" />
@@ -410,7 +409,7 @@ function StratFi({ session, logout, onExitDemo }) {
             {/* Help/Tutorial Button */}
             <button
                 onClick={downloadCSV}
-                className="px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all text-slate-500 hover:text-slate-700 hover:bg-slate-200"
+                className="px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all text-slate-300 hover:text-white hover:bg-slate-700"
                 title="Download CSV"
             >
                 <Download className="w-4 h-4" />
@@ -418,7 +417,7 @@ function StratFi({ session, logout, onExitDemo }) {
             {!isGameMode && (
               <button
                   onClick={() => setShowSetup(!showSetup)}
-                  className={`p-2 rounded-md transition-all ${showSetup ? 'bg-slate-200 text-slate-700' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-200'}`}
+                  className={`p-2 rounded-md transition-all ${showSetup ? 'bg-slate-700 text-[#4fd1c5]' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
                   title="Initial Position Settings"
               >
                   <Settings className="w-4 h-4" />
@@ -427,7 +426,7 @@ function StratFi({ session, logout, onExitDemo }) {
             {(logout || onExitDemo) && (
               <button
                   onClick={logout || onExitDemo}
-                  className="p-2 rounded-md transition-all text-slate-400 hover:text-red-600 hover:bg-red-50"
+                  className="p-2 rounded-md transition-all text-slate-400 hover:text-red-400 hover:bg-red-900/30"
                   title={isGameMode ? "Sign Out" : "Back to Login"}
               >
                   <LogOut className="w-4 h-4" />

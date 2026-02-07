@@ -20,6 +20,12 @@
 
 # Redirect www to non-www (mutandislab.com)
 [[redirects]]
+  from = "http://www.mutandislab.com/*"
+  to = "https://mutandislab.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "https://www.mutandislab.com/*"
   to = "https://mutandislab.com/:splat"
   status = 301

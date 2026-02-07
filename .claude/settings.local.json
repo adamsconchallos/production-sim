@@ -8,7 +8,11 @@
       "Bash(test:*)",
       "Bash(findstr:*)",
       "Bash(node scripts/submit_decisions.cjs:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(python generate_and_zip_assets.py:*)",
+      "Bash(pip install:*)",
+      "Bash(unzip:*)",
+      "Bash(ls:*)"
     ]
   }
 }
