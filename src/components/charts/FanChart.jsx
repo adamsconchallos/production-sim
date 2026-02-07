@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 const FanChart = ({ title, data, type = 'price', color = "#4f46e5" }) => {
   const height = 220;
   const width = 400;
@@ -46,13 +48,81 @@ const FanChart = ({ title, data, type = 'price', color = "#4f46e5" }) => {
 
   const formatVal = (v) => type === 'price' ? `$${v.toFixed(2)}` : v.toLocaleString();
 
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+  const [tooltipContent, setTooltipContent] = useState('');
+  const [tooltipX, setTooltipX] = useState(0);
+  const [tooltipY, setTooltipY] = useState(0);
+
+  const handleMouseMove = (e) => {
+    const svgRect = e.currentTarget.getBoundingClientRect();
+    const mouseX = e.clientX - svgRect.left;
+    const mouseY = e.clientY - svgRect.top;
+
+    // Convert mouseX to SVG coordinate system
+    const scaleX = width / svgRect.width;
+    const scaleY = height / svgRect.height;
+    const svgCoordX = mouseX * scaleX;
+    const svgCoordY = mouseY * scaleY;
+
+
+    // Find the closest data point
+    const points = history.map((d, i) => ({
+      year: d.year,
+      value: d[type],
+      x: getX(i, totalPoints),
+      y: getY(d[type]),
+      isForecast: false,
+    }));
+
+    // Add forecast point
+    points.push({
+      year: forecast.year,
+      value: fData.mean,
+      x: getX(lastHistIndex + 1, totalPoints),
+      y: meanY,
+      isForecast: true,
+    });
+
+    let closestPoint = null;
+    let minDistance = Infinity;
+
+    for (const point of points) {
+      // Only consider distance in X for finding the closest year/data point
+      const distance = Math.abs(svgCoordX - point.x);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestPoint = point;
+      }
+    }
+
+    // Define a threshold for how close the mouse needs to be to a data point's x-coordinate
+    const hoverThreshold = (width - (padding*2)) / (totalPoints - 1) / 2; // Half the distance between two points
+
+    if (closestPoint && minDistance < hoverThreshold) {
+      setTooltipVisible(true);
+      // Position tooltip relative to the SVG element, but using client coordinates for positioning for CSS `left`/`top`
+      setTooltipX(mouseX + 10); // Offset tooltip slightly from cursor
+      setTooltipY(mouseY - 20);
+      setTooltipContent(`${closestPoint.year}: ${formatVal(closestPoint.value)} ${closestPoint.isForecast ? '(Forecast)' : ''}`);
+    } else {
+      setTooltipVisible(false);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setTooltipVisible(false);
+  };
+
   return (
     <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col h-full">
       <h4 className="text-xs font-bold text-slate-500 uppercase mb-4 flex justify-between">
         <span>{title}</span>
         <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded text-[10px]">Forecast {forecast.year}</span>
       </h4>
-      <div className="flex-grow flex justify-center items-center">
+      <div className="flex-grow flex justify-center items-center relative"
+           onMouseMove={handleMouseMove}
+           onMouseLeave={handleMouseLeave}
+      >
         <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
           <line x1={padding} y1={height-padding} x2={width-padding} y2={height-padding} stroke="#e2e8f0" strokeWidth="1" />
           <line x1={padding} y1={padding} x2={padding} y2={height-padding} stroke="#e2e8f0" strokeWidth="1" />
@@ -70,13 +140,28 @@ const FanChart = ({ title, data, type = 'price', color = "#4f46e5" }) => {
           ))}
 
           <text x={endX} y={height - padding + 15} textAnchor="middle" fontSize="10" fill="#94a3b8" fontWeight="bold">{forecast.year}</text>
-          <text x={padding - 5} y={getY(maxVal)} textAnchor="end" fontSize="10" fill="#94a3b8">{formatVal(maxVal)}</text>
-          <text x={padding - 5} y={getY(minVal)} textAnchor="end" fontSize="10" fill="#94a3b8">{formatVal(minVal)}</text>
+          {Array.from({ length: 5 }).map((_, i) => {
+            const tickValue = minVal + (i * (maxVal - minVal) / 4);
+            return (
+              <g key={`y-tick-${i}`}>
+                <line x1={padding} y1={getY(tickValue)} x2={width - padding} y2={getY(tickValue)} stroke="#e2e8f0" strokeWidth="1" strokeDasharray="2,2" />
+                <text x={padding - 5} y={getY(tickValue)} textAnchor="end" fontSize="10" fill="#94a3b8">{formatVal(tickValue)}</text>
+              </g>
+            );
+          })}
 
           <text x={endX + 5} y={sd2UpY} fontSize="9" fill={color} alignmentBaseline="middle">High (2SD)</text>
           <text x={endX + 5} y={meanY} fontSize="9" fontWeight="bold" fill={color} alignmentBaseline="middle">Mean</text>
           <text x={endX + 5} y={sd2DownY} fontSize="9" fill={color} alignmentBaseline="middle">Low (2SD)</text>
         </svg>
+        {tooltipVisible && (
+          <div
+            className="absolute z-10 p-2 bg-slate-800 text-white text-xs rounded-md shadow-lg pointer-events-none"
+            style={{ left: tooltipX, top: tooltipY }}
+          >
+            {tooltipContent}
+          </div>
+        )}
       </div>
     </div>
   );
