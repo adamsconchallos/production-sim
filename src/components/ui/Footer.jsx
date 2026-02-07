@@ -1,7 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
+import LegalModal from './LegalModal';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
+  const [modal, setModal] = useState({ open: false, type: 'terms' });
+
+  const openLegal = (type) => setModal({ open: true, type });
 
   return (
     <footer className="max-w-7xl mx-auto mt-12 pb-8 px-4 text-slate-500 border-t border-slate-200 pt-8">
@@ -18,10 +22,20 @@ const Footer = () => {
           <h4 className="font-bold text-slate-900 mb-3 text-sm uppercase tracking-wider">Legal</h4>
           <ul className="text-sm space-y-2">
             <li>
-              <button className="hover:text-indigo-600 transition-colors">Terms and Conditions</button>
+              <button 
+                onClick={() => openLegal('terms')}
+                className="hover:text-indigo-600 transition-colors"
+              >
+                Terms and Conditions
+              </button>
             </li>
             <li>
-              <button className="hover:text-indigo-600 transition-colors">Privacy Policy</button>
+              <button 
+                onClick={() => openLegal('privacy')}
+                className="hover:text-indigo-600 transition-colors"
+              >
+                Privacy Policy
+              </button>
             </li>
           </ul>
         </div>
@@ -38,6 +52,12 @@ const Footer = () => {
       <div className="mt-8 pt-4 border-t border-slate-100 text-[10px] text-center uppercase tracking-[0.2em] font-bold text-slate-400">
         Strategy at Altitude
       </div>
+
+      <LegalModal 
+        isOpen={modal.open} 
+        onClose={() => setModal({ ...modal, open: false })} 
+        type={modal.type} 
+      />
     </footer>
   );
 };
