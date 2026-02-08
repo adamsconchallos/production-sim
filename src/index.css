@@ -1,3 +1,13 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Print Report */
+.print-only { display: none; }
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  @page { margin: 15mm 12mm; }
+  body { background: white !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

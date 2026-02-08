@@ -82,6 +82,7 @@ export function useAuth() {
       .from('games')
       .select('id, name, current_round, round_status')
       .eq('join_code', joinCode.toUpperCase().trim())
+      .eq('is_archived', false)
       .single();
 
     if (gameErr || !game) {
@@ -182,6 +183,7 @@ export function useAuth() {
       .from('games')
       .select('id, name, teacher_pin, current_round, round_status')
       .eq('join_code', joinCode.toUpperCase().trim())
+      .eq('is_archived', false)
       .single();
 
     if (gameErr || !game) {

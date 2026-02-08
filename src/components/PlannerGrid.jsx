@@ -6,17 +6,16 @@ import { formatVal } from '../utils/formatters';
 
 const PlannerGrid = ({ decisions, simulation, updateVal, collapsed, toggleSection, history = [], gameData }) => {
   const currentRound = gameData?.current_round || 1;
-  const maxRounds = gameData?.max_rounds || 3;
   const isCleared = gameData?.round_status === 'cleared';
 
   // Determine which rounds to show in the grid columns
   const rounds = useMemo(() => {
-    // Show history + current + up to 2 projections, capped by maxRounds
-    const end = Math.min(maxRounds, Math.max(currentRound + 2, 3));
+    // Show history + current + up to 2 projections
+    const end = Math.max(currentRound + 2, 3);
     const r = [];
     for (let i = 1; i <= end; i++) r.push(i);
     return r;
-  }, [currentRound, maxRounds]);
+  }, [currentRound]);
 
   const gridRows = useMemo(() => {
     const rawRows = [

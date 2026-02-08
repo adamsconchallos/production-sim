@@ -74,10 +74,10 @@ src/
 - `loan_requests`: Stores student loan requests, their approved status, amounts, rates, and terms.
 
 **Authentication:**
-The application uses a custom PIN-based authentication system managed through `useAuth.js`. Students log in with a join code, firm name, and firm PIN. Teachers log in with a join code and teacher PIN. This system leverages direct Supabase queries against the `games` and `firms` tables and does NOT use Supabase's built-in `auth.users()`. All database interactions are performed using the `anon` role, relying on Row Level Security (RLS) policies for data access control.
+The application uses a hybrid authentication system. Students log in with a join code, firm name, and firm PIN (custom PIN-based system). Instructors log in using Supabase Auth (email/password) which is managed through `useAuth.js`. Profiles for instructors are stored in the `profiles` table and linked via `teacher_id` in the `games` table. All database interactions respect Row Level Security (RLS) policies.
 
 **State Management:**
-No routing or global state management library is used. All primary application state lives in the root `App.jsx` component via `useState`/`useMemo` or is managed through custom hooks interacting with Supabase.
+No global state management library like Redux is used. Primary application state lives in the root `App.jsx` component or within specialized custom hooks (`useAuth`, `useMarketData`, etc.). `useAuth` persists session information in `localStorage` to maintain login across refreshes.
 
 ### Key modules
 

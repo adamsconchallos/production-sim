@@ -1,9 +1,10 @@
 import { useState } from 'react';
 
 const FanChart = ({ title, data, type = 'price', color = "#4f46e5" }) => {
-  const height = 220;
-  const width = 400;
-  const padding = 40;
+  const height = 300;
+  const padding = 50;
+  const pointSpacingX = Math.max(100, 350 / Math.max(1, (data.history?.length || 1)));
+  const width = Math.max(600, padding * 2 + pointSpacingX * Math.max(2, (data.history?.length || 1) + 1));
 
   // Extract Data
   const history = data.history || [];
@@ -23,26 +24,26 @@ const FanChart = ({ title, data, type = 'price', color = "#4f46e5" }) => {
   const maxVal = Math.max(...allValues) * 1.05;
   const range = (maxVal - minVal) || 1;
 
-  const getX = (index, totalPoints) => padding + (index * ((width - (padding*2)) / (totalPoints - 1)));
-  const getY = (val) => height - padding - ((val - minVal) / range) * (height - (padding * 2));
-
   const totalPoints = history.length + 1;
   const lastHistIndex = history.length - 1;
+
+  const getX = (index) => padding + (index * pointSpacingX);
+  const getY = (val) => height - padding - ((val - minVal) / range) * (height - (padding * 2));
 
   // 1. History Line Path
   let histPath = "";
   history.forEach((d, i) => {
     const val = d[type];
     if (!isNaN(val)) {
-        histPath += `${histPath === "" ? 'M' : 'L'} ${getX(i, totalPoints)} ${getY(val)} `;
+        histPath += `${histPath === "" ? 'M' : 'L'} ${getX(i)} ${getY(val)} `;
     }
   });
 
   // 2. Forecast Cone
-  const startX = getX(lastHistIndex, totalPoints);
+  const startX = getX(lastHistIndex);
   const lastVal = history[lastHistIndex][type];
   const startY = getY(lastVal);
-  const endX = getX(lastHistIndex + 1, totalPoints);
+  const endX = getX(lastHistIndex + 1);
 
   const meanY = getY(fData.mean);
   const sd1UpY = getY(fData.mean + fData.sd);
@@ -84,7 +85,7 @@ const FanChart = ({ title, data, type = 'price', color = "#4f46e5" }) => {
     const points = history.map((d, i) => ({
       year: d.year,
       value: d[type],
-      x: getX(i, totalPoints),
+      x: getX(i),
       y: getY(d[type]),
       isForecast: false,
     }));
@@ -93,7 +94,7 @@ const FanChart = ({ title, data, type = 'price', color = "#4f46e5" }) => {
     points.push({
       year: forecast.year,
       value: fData.mean,
-      x: getX(lastHistIndex + 1, totalPoints),
+      x: getX(lastHistIndex + 1),
       y: meanY,
       isForecast: true,
     });
@@ -111,7 +112,7 @@ const FanChart = ({ title, data, type = 'price', color = "#4f46e5" }) => {
     }
 
     // Define a threshold for how close the mouse needs to be to a data point's x-coordinate
-    const hoverThreshold = (width - (padding*2)) / (totalPoints - 1) / 2; // Half the distance between two points
+    const hoverThreshold = pointSpacingX / 2; // Half the distance between two points
 
     if (closestPoint && minDistance < hoverThreshold) {
       setTooltipVisible(true);
@@ -129,16 +130,16 @@ const FanChart = ({ title, data, type = 'price', color = "#4f46e5" }) => {
   };
 
   return (
-    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col h-full">
-      <h4 className="text-xs font-bold text-slate-500 uppercase mb-4 flex justify-between">
+    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col h-full overflow-hidden">
+      <h4 className="text-xs font-bold text-slate-500 uppercase mb-4 flex justify-between flex-shrink-0">
         <span>{title}</span>
         <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded text-[10px]">Forecast {forecast.year}</span>
       </h4>
-      <div className="flex-grow flex justify-center items-center relative"
+      <div className="flex-grow flex items-center relative overflow-x-auto"
            onMouseMove={handleMouseMove}
            onMouseLeave={handleMouseLeave}
       >
-        <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+        <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} className="overflow-visible" style={{ minWidth: '100%' }}>
           <line x1={padding} y1={height-padding} x2={width-padding} y2={height-padding} stroke="#e2e8f0" strokeWidth="1" />
           <line x1={padding} y1={padding} x2={padding} y2={height-padding} stroke="#e2e8f0" strokeWidth="1" />
 
@@ -149,18 +150,18 @@ const FanChart = ({ title, data, type = 'price', color = "#4f46e5" }) => {
 
           {history.map((d, i) => (
             <g key={i}>
-              <circle cx={getX(i, totalPoints)} cy={getY(d[type])} r="3" fill="white" stroke={color} strokeWidth="2" />
-              <text x={getX(i, totalPoints)} y={height - padding + 15} textAnchor="middle" fontSize="10" fill="#94a3b8">{d.year}</text>
+              <circle cx={getX(i)} cy={getY(d[type])} r="4" fill="white" stroke={color} strokeWidth="2.5" />
+              <text x={getX(i)} y={height - padding + 18} textAnchor="middle" fontSize="11" fill="#94a3b8" fontWeight="500">{d.year}</text>
             </g>
           ))}
 
-          <text x={endX} y={height - padding + 15} textAnchor="middle" fontSize="10" fill="#94a3b8" fontWeight="bold">{forecast.year}</text>
+          <text x={endX} y={height - padding + 18} textAnchor="middle" fontSize="11" fill="#94a3b8" fontWeight="bold">{forecast.year}</text>
           {Array.from({ length: 5 }).map((_, i) => {
             const tickValue = minVal + (i * (maxVal - minVal) / 4);
             return (
               <g key={`y-tick-${i}`}>
                 <line x1={padding} y1={getY(tickValue)} x2={width - padding} y2={getY(tickValue)} stroke="#e2e8f0" strokeWidth="1" strokeDasharray="2,2" />
-                <text x={padding - 5} y={getY(tickValue)} textAnchor="end" fontSize="10" fill="#94a3b8">{formatVal(tickValue)}</text>
+                <text x={padding - 10} y={getY(tickValue)} textAnchor="end" fontSize="11" fill="#94a3b8">{formatVal(tickValue)}</text>
               </g>
             );
           })}

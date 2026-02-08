@@ -3,7 +3,7 @@ import { PUBLISHED_URL, DEFAULT_SCENARIOS } from '../constants/defaults';
 
 const SHEET_CSV_URL = PUBLISHED_URL;
 
-export function useMarketData(gameId) {
+export function useMarketData(gameId, refreshTrigger = null) {
   const [scenarios, setScenarios] = useState(DEFAULT_SCENARIOS);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [usingDefaults, setUsingDefaults] = useState(false);
@@ -39,17 +39,31 @@ export function useMarketData(gameId) {
         if (!newScenarios[p]) return;
 
         if (row.type === 'Forecast') {
-          newScenarios[p].forecast = {
-            year: row.year,
-            price: { mean: parseFloat(row.price) || 0, sd: parseFloat(row.price_sd || 0) || 0 },
-            demand: { mean: parseFloat(row.demand) || 0, sd: parseFloat(row.demand_sd || 0) || 0 }
-          };
+          // If we already have a forecast, only overwrite it if this one has a higher sort_order
+          // or if the current one is null. This protects against stale data if delete fails.
+          if (!newScenarios[p].forecast || row.sort_order > (newScenarios[p].forecast._sort_order || 0)) {
+            newScenarios[p].forecast = {
+              year: row.year,
+              price: { mean: parseFloat(row.price) || 0, sd: parseFloat(row.price_sd || 0) || 0 },
+              demand: { mean: parseFloat(row.demand) || 0, sd: parseFloat(row.demand_sd || 0) || 0 },
+              _sort_order: row.sort_order // internal tracking
+            };
+          }
         } else {
           newScenarios[p].history.push({
             year: row.year,
             price: parseFloat(row.price) || 0,
-            demand: parseFloat(row.demand) || 0
+            demand: parseFloat(row.demand) || 0,
+            sort_order: row.sort_order
           });
+        }
+      });
+
+      // Sort history by sort_order and remove internal tracking
+      ['A', 'B', 'C'].forEach(p => {
+        newScenarios[p].history.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+        if (newScenarios[p].forecast) {
+          delete newScenarios[p].forecast._sort_order;
         }
       });
 
@@ -152,10 +166,19 @@ export function useMarketData(gameId) {
     return fetchFromSheets();
   }, [gameId, fetchFromSupabase, fetchFromSheets]);
 
-  // Fetch on mount and when gameId changes
+  // Fetch on mount and when dependencies change
   useEffect(() => {
     fetchMarketData();
-  }, [fetchMarketData]);
+  }, [fetchMarketData, refreshTrigger]);
+
+  // Polling fallback
+  useEffect(() => {
+    if (!gameId) return;
+    const interval = setInterval(() => {
+      fetchFromSupabase();
+    }, 45000); // Poll every 45 seconds for market data
+    return () => clearInterval(interval);
+  }, [gameId, fetchFromSupabase]);
 
   return { scenarios, isLoadingData, usingDefaults, fetchMarketData };
 }
