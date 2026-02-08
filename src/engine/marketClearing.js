@@ -29,18 +29,20 @@ export function calculateAR1Forecast(series, trend) {
   const intercept = (sumY - slope * sumX) / n;
 
   const lastVal = series[series.length - 1];
-  const forecast = (intercept + slope * lastVal) * trend;
+  let forecast = (intercept + slope * lastVal) * trend;
+
+  if (isNaN(forecast)) forecast = lastVal * trend;
 
   let sumSqResid = 0;
   for (let i = 0; i < n; i++) {
     const predicted = intercept + slope * x[i];
-    sumSqResid += Math.pow(y[i] - predicted, 2);
+    sumSqResid += Math.pow(y[i] - (isNaN(predicted) ? y[i] : predicted), 2);
   }
 
   let se = Math.sqrt(sumSqResid / (n - 2 || 1));
-  se = Math.max(se, forecast * 0.02);
+  se = Math.max(isNaN(se) ? 0 : se, forecast * 0.02);
 
-  return { mean: forecast, sd: se };
+  return { mean: isNaN(forecast) ? 0 : forecast, sd: isNaN(se) ? 0 : se };
 }
 
 /**
@@ -55,8 +57,10 @@ export function clearMarket(parameters, firmDecisions) {
 
   ['A', 'B', 'C'].forEach(prod => {
     const demand = parameters[prod];
-    if (!demand) {
-      results[prod] = { price: 0, qty: 0 };
+    if (!demand || typeof demand.intercept === 'undefined' || typeof demand.slope === 'undefined') {
+      console.warn(`Missing demand parameters for product ${prod}. Using defaults.`);
+      const fallback = { A: {intercept:50, slope:0.002}, B: {intercept:60, slope:0.003}, C: {intercept:70, slope:0.005} }[prod];
+      results[prod] = { price: fallback.intercept, qty: 0 };
       return;
     }
 
@@ -91,7 +95,7 @@ export function clearMarket(parameters, firmDecisions) {
 
         if (o.price > demandPrice) {
           // This firm's ask exceeds demand at cumulative qty
-          clearQty = (demand.intercept - o.price) / demand.slope;
+          clearQty = Math.max(0, (demand.intercept - o.price) / (demand.slope || 1));
           clearPrice = o.price;
           found = true;
           break;
@@ -101,13 +105,13 @@ export function clearMarket(parameters, firmDecisions) {
       if (!found) {
         // All supply clears
         clearQty = cumQ;
-        clearPrice = demand.intercept - demand.slope * cumQ;
+        clearPrice = Math.max(0, demand.intercept - demand.slope * cumQ);
       }
     }
 
     results[prod] = {
-      price: Math.max(0, clearPrice),
-      qty: Math.max(0, clearQty)
+      price: isNaN(clearPrice) ? (demand.intercept || 0) : Math.max(0, clearPrice),
+      qty: isNaN(clearQty) ? 0 : Math.max(0, clearQty)
     };
   });
 

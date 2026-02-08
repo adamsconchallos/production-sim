@@ -7,7 +7,22 @@ const DEFAULT_PARAMS = {
 };
 
 const DemandCurveEditor = ({ parameters, onParametersChange, onSave, saving, currentRound, roundStatus }) => {
-  const params = parameters || DEFAULT_PARAMS;
+  // Ensure we have a clean copy of parameters with all required fields
+  const getCleanParams = () => {
+    const p = parameters || DEFAULT_PARAMS;
+    const clean = {};
+    ['A', 'B', 'C'].forEach(prod => {
+      const base = p[prod] || DEFAULT_PARAMS[prod];
+      clean[prod] = {
+        intercept: base.intercept ?? DEFAULT_PARAMS[prod].intercept,
+        slope: base.slope ?? DEFAULT_PARAMS[prod].slope,
+        growth: base.growth ?? DEFAULT_PARAMS[prod].growth
+      };
+    });
+    return clean;
+  };
+
+  const params = getCleanParams();
 
   const setParam = (product, field, value) => {
     onParametersChange({

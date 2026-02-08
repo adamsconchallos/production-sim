@@ -108,9 +108,9 @@ const TeacherDashboard = ({ session, logout }) => {
           },
           rates: { st: 10.0, lt: 5.0, tax: 30.0 },
           parameters: {
-            A: { growth: 1.0, sensitivity: 0.5 },
-            B: { growth: 1.0, sensitivity: 0.5 },
-            C: { growth: 1.0, sensitivity: 0.5 }
+            A: { intercept: 50, slope: 0.002, growth: 1.0 },
+            B: { intercept: 60, slope: 0.003, growth: 1.0 },
+            C: { intercept: 70, slope: 0.005, growth: 1.0 }
           }
         })
         .select()
