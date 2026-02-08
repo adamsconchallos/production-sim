@@ -12,7 +12,10 @@
       "Bash(python generate_and_zip_assets.py:*)",
       "Bash(pip install:*)",
       "Bash(unzip:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(nslookup:*)",
+      "Bash(curl:*)",
+      "Bash(node:*)"
     ]
   }
 }

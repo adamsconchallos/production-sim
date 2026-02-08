@@ -422,14 +422,18 @@ function GameManagement({ gameId, session, onBack, logout }) {
     try {
       const { data: gameConfig } = await supabase.from('games').select('*').eq('id', gameId).single();
       const { data: allDecisions } = await supabase.from('decisions').select('*').eq('game_id', gameId).eq('round', gameConfig.current_round);
-      const { data: loanRequests } = await supabase.from('loan_requests').select('*').eq('game_id', gameId).eq('round', gameConfig.current_round);
+      
+      // Fetch ALL approved/partial loan requests for this game to calculate mandatory payments
+      const { data: allApprovedLoans } = await supabase
+        .from('loan_requests')
+        .select('*')
+        .eq('game_id', gameId)
+        .in('status', ['approved', 'partial']);
       
       const firmLoans = {};
-      loanRequests?.forEach(r => {
-        if (!firmLoans[r.firm_id]) firmLoans[r.firm_id] = { st: null, lt: null };
-        if (r.status === 'approved' || r.status === 'partial') {
-          firmLoans[r.firm_id][r.loan_type.toLowerCase()] = { amount: parseFloat(r.approved_amount) || 0, rate: parseFloat(r.approved_rate) || (r.loan_type === 'ST' ? gameConfig.rates.st : gameConfig.rates.lt) };
-        }
+      allApprovedLoans?.forEach(r => {
+        if (!firmLoans[r.firm_id]) firmLoans[r.firm_id] = [];
+        firmLoans[r.firm_id].push(r);
       });
 
       const { data: prevStates } = await supabase.from('firm_state').select('*').eq('game_id', gameId).eq('round', gameConfig.current_round - 1);
@@ -437,8 +441,13 @@ function GameManagement({ gameId, session, onBack, logout }) {
 
       const firmDecisions = allDecisions.map(d => {
         const data = JSON.parse(JSON.stringify(d.data));
-        const loans = firmLoans[d.firm_id];
-        if (loans) { if (loans.st) data.finance.newST = loans.st.amount; if (loans.lt) data.finance.newLT = loans.lt.amount; }
+        const loans = firmLoans[d.firm_id]?.filter(l => l.round === gameConfig.current_round);
+        if (loans) { 
+          const st = loans.find(l => l.loan_type === 'ST');
+          const lt = loans.find(l => l.loan_type === 'LT');
+          if (st) data.finance.newST = parseFloat(st.approved_amount); 
+          if (lt) data.finance.newLT = parseFloat(lt.approved_amount); 
+        }
         return { firmId: d.firm_id, data };
       });
 
@@ -446,8 +455,32 @@ function GameManagement({ gameId, session, onBack, logout }) {
       const stateInserts = [];
       for (const fd of firmDecisions) {
         const fs = firmStates[fd.firmId] || null;
-        const actual = computeFirmActualResults(fd.data, results, fs, gameConfig.setup, gameConfig.rates, firmLoans[fd.firmId]);
-        stateInserts.push({ game_id: gameId, firm_id: fd.firmId, round: gameConfig.current_round, state: { ...actual.nextStart, financials: actual.financials, roe: actual.financials.roe, netIncome: actual.financials.netIncome, revenue: actual.financials.revenue, usage: actual.usage, capacityCheck: actual.capacityCheck, limits: actual.limits }, inventory_details: actual.inventoryDetails, efficiency: actual.nextEfficiency });
+        const actual = computeFirmActualResults(
+          fd.data, 
+          results, 
+          fs, 
+          gameConfig.setup, 
+          gameConfig.rates, 
+          firmLoans[fd.firmId] || [],
+          gameConfig.current_round
+        );
+        stateInserts.push({ 
+          game_id: gameId, 
+          firm_id: fd.firmId, 
+          round: gameConfig.current_round, 
+          state: { 
+            ...actual.nextStart, 
+            financials: actual.financials, 
+            roe: actual.financials.roe, 
+            netIncome: actual.financials.netIncome, 
+            revenue: actual.financials.revenue, 
+            usage: actual.usage, 
+            capacityCheck: actual.capacityCheck, 
+            limits: actual.limits 
+          }, 
+          inventory_details: actual.inventoryDetails, 
+          efficiency: actual.nextEfficiency 
+        });
       }
 
       await supabase.from('firm_state').upsert(stateInserts, { onConflict: 'game_id,firm_id,round' });
@@ -455,6 +488,59 @@ function GameManagement({ gameId, session, onBack, logout }) {
       fetchGame();
       refreshLeaderboard();
     } catch (err) { console.error(err); } finally { setClearing(false); }
+  };
+
+  const saveSetup = async () => {
+    setSavingSetup(true);
+    try {
+      const { error } = await supabase
+        .from('games')
+        .update({ setup: editSetup, rates: editRates })
+        .eq('id', gameId);
+      
+      if (error) throw error;
+      
+      if (game.current_round === 1 && game.round_status === 'setup') {
+        const stateInserts = firms.map(f => ({
+          game_id: gameId,
+          firm_id: f.id,
+          round: 0,
+          state: { ...editSetup, rates: editRates },
+          inventory_details: { A: { units: 0, value: 0 }, B: { units: 0, value: 0 }, C: { units: 0, value: 0 } },
+          efficiency: 0
+        }));
+        if (stateInserts.length > 0) {
+          await supabase.from('firm_state').upsert(stateInserts, { onConflict: 'game_id,firm_id,round' });
+        }
+      }
+
+      setGame({ ...game, setup: editSetup, rates: editRates });
+      setMessage({ type: 'success', text: 'Configuration saved successfully.' });
+      setTimeout(() => setMessage(null), 3000);
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setSavingSetup(false);
+    }
+  };
+
+  const saveParameters = async () => {
+    setSavingParams(true);
+    try {
+      const { error } = await supabase
+        .from('games')
+        .update({ parameters: editParameters })
+        .eq('id', gameId);
+      
+      if (error) throw error;
+      setGame({ ...game, parameters: editParameters });
+      setMessage({ type: 'success', text: 'Market parameters saved successfully.' });
+      setTimeout(() => setMessage(null), 3000);
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setSavingParams(false);
+    }
   };
 
   const resetGame = async () => {
@@ -469,6 +555,15 @@ function GameManagement({ gameId, session, onBack, logout }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 p-4">
+      {message && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg border flex items-center gap-3 ${
+          message.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'
+        }`}>
+          {message.type === 'success' ? <Zap className="w-5 h-5 text-emerald-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />}
+          <span className="font-medium">{message.text}</span>
+          <button onClick={() => setMessage(null)} className="ml-2 text-slate-400 hover:text-slate-600 font-bold">&times;</button>
+        </div>
+      )}
       <header className="max-w-5xl mx-auto mb-6 flex justify-between items-center bg-[#1a365d] p-4 rounded-xl shadow-lg">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 hover:bg-slate-700 rounded-lg text-slate-300"><ChevronLeft className="w-5 h-5" /></button>
@@ -521,8 +616,8 @@ function GameManagement({ gameId, session, onBack, logout }) {
             </div>
             {submissions.length > 0 && (
               <div className="mb-8">
-                <div className="flex justify-between mb-4"><h4 className="font-bold">Supply Curve</h4><div className="flex gap-1">{['A','B','C'].map(p => <button key={p} onClick={() => setSupplyTab(p)} className={`px-3 py-1 rounded text-xs ${supplyTab===p?'bg-[#4fd1c5] text-[#1a365d]':'bg-slate-100'}`}>Product {p}</button>)}</div></div>
-                <SupplyCurveChart submissions={submissions} product={supplyTab} />
+                <div className="flex justify-between mb-4"><h4 className="font-bold">Supply & Demand Curve</h4><div className="flex gap-1">{['A','B','C'].map(p => <button key={p} onClick={() => setSupplyTab(p)} className={`px-3 py-1 rounded text-xs ${supplyTab===p?'bg-[#4fd1c5] text-[#1a365d]':'bg-slate-100'}`}>Product {p}</button>)}</div></div>
+                <SupplyCurveChart submissions={submissions} product={supplyTab} parameters={game?.parameters} />
               </div>
             )}
             <div className="flex gap-2">
@@ -538,8 +633,24 @@ function GameManagement({ gameId, session, onBack, logout }) {
         {tab === 'leaderboard' && <InstructorLeaderboard leaderboard={leaderboard} loading={loadingLeaderboard} currentRound={game?.current_round} />}
         {tab === 'setup' && (
           <div className="space-y-6">
-            <BalanceSheetEditor setup={editSetup || game?.setup} rates={editRates || game?.rates} onSetupChange={setEditSetup} onRatesChange={setEditRates} onSave={() => {}} disabled={game?.current_round > 1} firmCount={firms.length} />
-            <DemandCurveEditor parameters={editParameters || game?.parameters} onParametersChange={setEditParameters} onSave={() => {}} currentRound={game?.current_round} roundStatus={game?.round_status} />
+            <BalanceSheetEditor 
+              setup={editSetup || game?.setup} 
+              rates={editRates || game?.rates} 
+              onSetupChange={setEditSetup} 
+              onRatesChange={setEditRates} 
+              onSave={saveSetup} 
+              saving={savingSetup}
+              disabled={game?.current_round > 1} 
+              firmCount={firms.length} 
+            />
+            <DemandCurveEditor 
+              parameters={editParameters || game?.parameters} 
+              onParametersChange={setEditParameters} 
+              onSave={saveParameters} 
+              saving={savingParams}
+              currentRound={game?.current_round} 
+              roundStatus={game?.round_status} 
+            />
           </div>
         )}
         <Footer />

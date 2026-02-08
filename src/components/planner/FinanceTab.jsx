@@ -51,8 +51,19 @@ export default function FinanceTab({ decisions, simulation, lastState, updateVal
             <div>
               <div className="font-bold">Projected Cash Deficit: {formatVal(projFin.cash, 'currency')}</div>
               <div className="text-red-600 mt-0.5">
-                Your company is projected to run out of cash. Consider requesting more financing on the 
-                <span className="font-bold"> Investment</span> tab or reducing costs and dividends.
+                Your company is projected to run out of cash. This will trigger <span className="font-bold">FORCED LIQUIDATION</span> of inventory (30% loss) and fixed assets (50% loss) to cover the gap.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {projFin.mandatoryPayment > 0 && (
+          <div className="flex items-start gap-2 text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm mb-6">
+            <DollarSign className="w-4 h-4 mt-0.5 shrink-0" />
+            <div>
+              <div className="font-bold">Mandatory Debt Service: {formatVal(projFin.mandatoryPayment, 'currency')}</div>
+              <div className="text-blue-600 mt-0.5">
+                You have active loans requiring a fixed annual payment. This is automatically deducted from your cash.
               </div>
             </div>
           </div>
@@ -111,6 +122,10 @@ export default function FinanceTab({ decisions, simulation, lastState, updateVal
                 <Row label="Taxes" current={lastFin.tax} projected={projFin.tax} negative />
                 
                 <Row label="Net Income" current={lastFin.netIncome} projected={projFin.netIncome} highlight />
+
+                <div className="h-4 border-t border-slate-100 my-2"></div>
+                <Row label="Liquidation Loss" current={lastFin.liquidationLoss} projected={projFin.liquidationLoss} negative />
+                <Row label="EVA (Score)" current={lastFin.eva} projected={projFin.eva} highlight />
              </div>
         </div>
 

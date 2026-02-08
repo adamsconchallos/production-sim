@@ -4,12 +4,37 @@ import {
   CAPACITY_PER_1000_LABOUR,
   EFFICIENCY_GAIN_PER_10K_INV,
   RECIPE,
-  BASE_COSTS
-} from '../constants/recipes';
+  BASE_COSTS,
+  LIQUIDATION_HAIRCUT_INVENTORY,
+  LIQUIDATION_HAIRCUT_FIXED_ASSETS,
+  COST_OF_EQUITY
+} from '../constants/recipes.js';
+import { calculateEVA } from '../utils/finance.js';
 
 const DEFAULT_LIMITS = { machine: 1000, labour: 1000, material: 500 };
 
-export function calculateYear(start, decision, prevEfficiency = 0, startInventoryDetails, rates, loanTerms = null) {
+/**
+ * Simulates a single year of operations.
+ * 
+ * @param {Object} start - Starting balance sheet/state
+ * @param {Object} decision - Firm's decisions for the round
+ * @param {number} prevEfficiency - Current efficiency multiplier
+ * @param {Object} startInventoryDetails - Detailed inventory breakdown
+ * @param {Object} rates - Global tax/interest rates
+ * @param {Object} loanTerms - Per-firm loan rates (if applicable)
+ * @param {number} mandatoryPayment - Required debt payment (cuota) for this round
+ * @param {boolean} isFinalRound - If true, all debt is settled from liquidation
+ */
+export function calculateYear(
+  start, 
+  decision, 
+  prevEfficiency = 0, 
+  startInventoryDetails, 
+  rates, 
+  loanTerms = null,
+  mandatoryPayment = 0,
+  isFinalRound = false
+) {
   // Ensure limits always exist
   if (!start.limits) start = { ...start, limits: DEFAULT_LIMITS };
 
@@ -82,14 +107,7 @@ export function calculateYear(start, decision, prevEfficiency = 0, startInventor
     totalInventoryValue += nextInventoryDetails[p].value;
   });
 
-  // 2. Fixed Costs
-  // Clamp repayments to actual debt owed to prevent balance sheet imbalance
-  const actualPayST = Math.min(decision.finance.payST, start.stDebt);
-  const actualPayLT = Math.min(decision.finance.payLT, start.ltDebt);
-  const endST = start.stDebt - actualPayST + decision.finance.newST;
-  const endLT = start.ltDebt - actualPayLT + decision.finance.newLT;
-  // Interest on beginning-of-period balances (standard accounting convention)
-  // Use per-firm rates if available (via loanTerms), otherwise global rates
+  // 2. Fixed Costs & Interest
   const stRate = loanTerms?.st?.rate ?? rates.st;
   const ltRate = loanTerms?.lt?.rate ?? rates.lt;
   const interest = (start.stDebt * (stRate/100)) + (start.ltDebt * (ltRate/100));
@@ -97,31 +115,104 @@ export function calculateYear(start, decision, prevEfficiency = 0, startInventor
   const trainingExp = decision.inv.labour;
   const opEx = depreciation + trainingExp;
 
-  // 3. Profit
+  // 3. Voluntary Repayments (beyond mandatory)
+  // Logic: mandatory payment is deducted first. Decisions.finance.payXX are ADDITIONAL payments.
+  let actualPayST = Math.min(decision.finance.payST, start.stDebt);
+  let actualPayLT = Math.min(decision.finance.payLT, start.ltDebt);
+
+  // 4. Profit before taxes
   const grossProfit = revenue - cogs;
   const ebit = grossProfit - opEx;
   const ebt = ebit - interest;
   const tax = Math.max(0, ebt > 0 ? ebt * (rates.tax/100) : 0);
   const netIncome = ebt - tax;
 
-  // 4. Cash Flow
+  // 5. Cash Flow & Liquidation
   const cashIn = start.cash + revenue + decision.finance.newST + decision.finance.newLT;
-  const cashOut = totalProdCost + trainingExp + interest + tax + decision.inv.machine + actualPayST + actualPayLT + decision.finance.div;
-  const endCash = cashIn - cashOut;
+  const baseCashOut = totalProdCost + trainingExp + interest + tax + decision.inv.machine + actualPayST + actualPayLT + decision.finance.div;
+  
+  let endCash = cashIn - baseCashOut - mandatoryPayment;
+  let liquidationLoss = 0;
+  let inventoryLiquidated = 0;
+  let assetsLiquidated = 0;
 
-  // 5. Balance Sheet
-  const endFixedAssets = start.fixedAssets - depreciation + decision.inv.machine;
-  const endTotalAssets = endCash + totalInventoryValue + endFixedAssets;
-  const endRE = start.retainedEarnings + netIncome - decision.finance.div;
-  const endEquity = start.equity + endRE - start.retainedEarnings;
+  // Final assets before liquidation
+  let endFixedAssets = start.fixedAssets - depreciation + decision.inv.machine;
+  let endInventoryValue = totalInventoryValue;
+
+  // Handle Cash Deficit via Forced Liquidation
+  if (endCash < 0) {
+    // 1. Sell Inventory (30% haircut)
+    const inventoryRecoveryValue = endInventoryValue * (1 - LIQUIDATION_HAIRCUT_INVENTORY);
+    const neededFromInventory = Math.min(Math.abs(endCash), inventoryRecoveryValue);
+    
+    inventoryLiquidated = neededFromInventory / (1 - LIQUIDATION_HAIRCUT_INVENTORY);
+    liquidationLoss += inventoryLiquidated * LIQUIDATION_HAIRCUT_INVENTORY;
+    endCash += neededFromInventory;
+    endInventoryValue -= inventoryLiquidated;
+
+    // 2. Sell Fixed Assets (50% haircut)
+    if (endCash < 0) {
+      const assetsRecoveryValue = endFixedAssets * (1 - LIQUIDATION_HAIRCUT_FIXED_ASSETS);
+      const neededFromAssets = Math.min(Math.abs(endCash), assetsRecoveryValue);
+
+      assetsLiquidated = neededFromAssets / (1 - LIQUIDATION_HAIRCUT_FIXED_ASSETS);
+      liquidationLoss += assetsLiquidated * LIQUIDATION_HAIRCUT_FIXED_ASSETS;
+      endCash += neededFromAssets;
+      endFixedAssets -= assetsLiquidated;
+    }
+  }
+
+  // 6. Balance Sheet Adjustments
+  // Mandatory payment reduces debt. For simplicity, we reduce LT debt first, then ST.
+  let remainingMandatory = mandatoryPayment;
+  let repaidLTFromMandatory = Math.min(remainingMandatory, start.ltDebt - actualPayLT);
+  remainingMandatory -= repaidLTFromMandatory;
+  let repaidSTFromMandatory = Math.min(remainingMandatory, start.stDebt - actualPayST);
+  
+  let endST = start.stDebt - actualPayST - repaidSTFromMandatory + decision.finance.newST;
+  let endLT = start.ltDebt - actualPayLT - repaidLTFromMandatory + decision.finance.newLT;
+
+  // Final Round Settlement
+  if (isFinalRound) {
+    const totalRemainingDebt = endST + endLT;
+    const finalRecoveryInventory = endInventoryValue * (1 - LIQUIDATION_HAIRCUT_INVENTORY);
+    const finalRecoveryAssets = endFixedAssets * (1 - LIQUIDATION_HAIRCUT_FIXED_ASSETS);
+    
+    const availableToSettle = endCash + finalRecoveryInventory + finalRecoveryAssets;
+    
+    if (availableToSettle < totalRemainingDebt) {
+        // Bankruptcy: Equity is wiped
+        endCash = 0;
+        endInventoryValue = 0;
+        endFixedAssets = 0;
+        endST = 0;
+        endLT = 0;
+        liquidationLoss += (start.equity + netIncome - liquidationLoss); // Wipe out everything
+    } else {
+        // Full Settlement
+        endCash = availableToSettle - totalRemainingDebt;
+        liquidationLoss += (endInventoryValue - finalRecoveryInventory) + (endFixedAssets - finalRecoveryAssets);
+        endInventoryValue = 0;
+        endFixedAssets = 0;
+        endST = 0;
+        endLT = 0;
+    }
+  }
+
+  const endTotalAssets = endCash + endInventoryValue + endFixedAssets;
+  const endRE = start.retainedEarnings + netIncome - decision.finance.div - liquidationLoss;
+  const endEquity = Math.max(0, start.equity + (endRE - start.retainedEarnings));
   const endTotalLiabEquity = endST + endLT + endEquity;
   const totalDebt = endST + endLT;
 
-  // 6. Next Round State
+  const eva = calculateEVA(netIncome - liquidationLoss, start.equity, COST_OF_EQUITY);
+
+  // 7. Next Round State
   const addedMachineCap = (decision.inv.machine / 1000) * CAPACITY_PER_1000_MACHINE;
   const addedLabourCap = (decision.inv.labour / 1000) * CAPACITY_PER_1000_LABOUR;
   const nextLimits = {
-    machine: start.limits.machine + addedMachineCap,
+    machine: Math.max(0, (start.limits.machine - (assetsLiquidated / 1000 * CAPACITY_PER_1000_MACHINE)) + addedMachineCap),
     labour: start.limits.labour + addedLabourCap,
     material: 100000
   };
@@ -129,7 +220,7 @@ export function calculateYear(start, decision, prevEfficiency = 0, startInventor
   const addedEfficiency = (totalInv / 10000) * EFFICIENCY_GAIN_PER_10K_INV;
   const nextEfficiency = prevEfficiency + addedEfficiency;
 
-  // 7. Ratios
+  // 8. Ratios
   const roe = endEquity > 0 ? (netIncome / endEquity) * 100 : 0;
   const roa = endTotalAssets > 0 ? (netIncome / endTotalAssets) * 100 : 0;
   const assetTurnover = endTotalAssets > 0 ? revenue / endTotalAssets : 0;
@@ -147,6 +238,9 @@ export function calculateYear(start, decision, prevEfficiency = 0, startInventor
         interest,
         tax,
         netIncome,
+        liquidationLoss,
+        mandatoryPayment,
+        eva,
         roe,
         roa,
         assetTurnover,
@@ -154,7 +248,7 @@ export function calculateYear(start, decision, prevEfficiency = 0, startInventor
         debtEquityRatio,
         // Balance Sheet Items
         cash: endCash,
-        inventory: totalInventoryValue,
+        inventory: endInventoryValue,
         inventoryUnits: totalInventoryUnits,
         fixedAssets: endFixedAssets,
         totalAssets: endTotalAssets,
@@ -168,11 +262,11 @@ export function calculateYear(start, decision, prevEfficiency = 0, startInventor
         inventoryUnitsC: nextInventoryDetails.C.units
     },
     inventoryDetails: nextInventoryDetails,
-    limits: start.limits,
+    limits: nextLimits,
     usage: { machine: machineHoursUsed, labour: labourHoursUsed },
     nextStart: {
       cash: endCash,
-      inventory: totalInventoryValue,
+      inventory: endInventoryValue,
       fixedAssets: endFixedAssets,
       stDebt: endST,
       ltDebt: endLT,

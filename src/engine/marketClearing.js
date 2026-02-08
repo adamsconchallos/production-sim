@@ -1,4 +1,5 @@
-import { calculateYear } from './simulation';
+import { calculateYear } from './simulation.js';
+import { calculateLoanPayment } from '../utils/finance.js';
 
 /**
  * AR(1) forecast on a time series with trend adjustment.
@@ -116,19 +117,24 @@ export function clearMarket(parameters, firmDecisions) {
 /**
  * Compute a single firm's actual results after market clearing.
  *
- * For each product:
- * - If firm's ask price <= clearing price → sells min(offered_sales, available_stock) at clearing price
- * - If firm's ask price > clearing price → sells 0 (unsold inventory carries forward)
- *
  * @param {Object} firmDecision - {qty, sales, price, inv, finance}
  * @param {Object} clearingResults - {A: {price, qty}, B: {...}, C: {...}}
  * @param {Object} firmState - {state: {balance sheet}, inventory_details, efficiency} or null for initial
  * @param {Object} gameSetup - initial balance sheet from game config
  * @param {Object} rates - {st, lt, tax}
- * @param {Object} approvedLoans - {st: {rate: ...}, lt: {rate: ...}} or null
+ * @param {Object} allApprovedLoans - Array of ALL approved loans for this firm historically
+ * @param {number} currentRound - Current round number
  * @returns {Object} {nextStart, inventoryDetails, nextEfficiency, financials}
  */
-export function computeFirmActualResults(firmDecision, clearingResults, firmState, gameSetup, rates, approvedLoans = null) {
+export function computeFirmActualResults(
+  firmDecision, 
+  clearingResults, 
+  firmState, 
+  gameSetup, 
+  rates, 
+  allApprovedLoans = [],
+  currentRound = 1
+) {
   // Determine starting position
   const start = firmState?.state
     ? { ...firmState.state, rates }
@@ -138,6 +144,22 @@ export function computeFirmActualResults(firmDecision, clearingResults, firmStat
     || { A: { units: 0, value: 0 }, B: { units: 0, value: 0 }, C: { units: 0, value: 0 } };
 
   const prevEfficiency = firmState?.efficiency || 0;
+
+  // 1. Calculate Mandatory Payment for this round
+  // We sum the payments (cuotas) of all loans approved in PREVIOUS rounds or CURRENT round.
+  // Note: A loan approved in Round N usually starts payment in Round N+1 or Round N.
+  // Here we'll assume payment starts the round it is approved (as it is "cleared" in that round).
+  let mandatoryPayment = 0;
+  allApprovedLoans.forEach(loan => {
+      // A loan is active if: round_approved <= currentRound < (round_approved + term)
+      const roundApproved = loan.round;
+      const term = loan.approved_term || 1;
+      
+      if (currentRound >= roundApproved && currentRound < (roundApproved + term)) {
+          const cuota = calculateLoanPayment(loan.approved_amount, loan.approved_rate, term);
+          mandatoryPayment += cuota;
+      }
+  });
 
   // Build the actual decision: same production/inv/finance, but actual sales and clearing prices
   const actualDecision = {
@@ -167,14 +189,32 @@ export function computeFirmActualResults(firmDecision, clearingResults, firmStat
     }
   });
 
+  // Current round loan terms (for interest calculation on new debt)
+  const currentRoundLoans = {
+    st: allApprovedLoans.find(l => l.round === currentRound && l.loan_type === 'ST'),
+    lt: allApprovedLoans.find(l => l.round === currentRound && l.loan_type === 'LT')
+  };
+
   // Run the simulation engine with actual values
-  // Pass approvedLoans as loanTerms if provided (handled inside calculateYear)
-  const result = calculateYear(start, actualDecision, prevEfficiency, startInventoryDetails, rates, approvedLoans);
+  const isFinalRound = currentRound === 6;
+  const result = calculateYear(
+    start, 
+    actualDecision, 
+    prevEfficiency, 
+    startInventoryDetails, 
+    rates, 
+    currentRoundLoans,
+    mandatoryPayment,
+    isFinalRound
+  );
 
   return {
     nextStart: result.nextStart,
     inventoryDetails: result.inventoryDetails,
     nextEfficiency: result.nextEfficiency,
-    financials: result.financials
+    financials: result.financials,
+    usage: result.usage,
+    capacityCheck: result.capacityCheck,
+    limits: result.limits
   };
 }

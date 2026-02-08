@@ -18,6 +18,7 @@ import { useMarketData } from './hooks/useMarketData';
 import { useLeaderboard } from './hooks/useLeaderboard';
 import { useLoanRequests } from './hooks/useLoanRequests';
 import { calculateCreditRating } from './utils/creditRating';
+import { calculateLoanPayment } from './utils/finance';
 
 import LoginPage from './components/LoginPage';
 import TeacherDashboard from './components/TeacherDashboard';
@@ -101,7 +102,7 @@ function StratFi({ session, logout, onExitDemo }) {
   const [lastState, setLastState] = useState(null); // The starting point for current round
 
   // --- Loan Requests (NEW) ---
-  const { loanRequests } = useLoanRequests(session, gameData);
+  const { loanRequests, allApprovedLoans } = useLoanRequests(session, gameData);
 
   // --- Decisions State (Current Round Only) ---
   const [decisions, setDecisions] = useState({
@@ -286,15 +287,28 @@ function StratFi({ session, logout, onExitDemo }) {
       lt: { rate: creditProfile.estimatedLT }
     };
 
+    // Calculate Mandatory Payment for Projection
+    let mandatoryPayment = 0;
+    const currentRound = gameData?.current_round || 1;
+    allApprovedLoans?.forEach(loan => {
+        const roundApproved = loan.round;
+        const term = loan.approved_term || 1;
+        if (currentRound >= roundApproved && currentRound < (roundApproved + term)) {
+            mandatoryPayment += calculateLoanPayment(loan.approved_amount, loan.approved_rate, term);
+        }
+    });
+
     return calculateYear(
         startState, 
         decisions, 
         lastState.efficiency || 0, 
         lastState.inventory_details, 
         startState.rates,
-        dynamicLoanTerms
+        dynamicLoanTerms,
+        mandatoryPayment,
+        currentRound === 6
     );
-  }, [lastState, decisions, gameData, history]);
+  }, [lastState, decisions, gameData, history, allApprovedLoans]);
 
   const updateVal = (id, val) => {
     const [category, field] = id.split('.');
@@ -475,6 +489,7 @@ function StratFi({ session, logout, onExitDemo }) {
               history={history}
               isGameMode={isGameMode}
               loanRequests={loanRequests}
+              mandatoryPayment={simulation?.financials?.mandatoryPayment || 0}
             />
 
             {/* SUBMISSION BUTTON */}

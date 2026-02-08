@@ -28,7 +28,7 @@ const Leaderboard = ({ leaderboard, loading }) => {
             <Trophy className="w-6 h-6" />
             <h2 className="text-xl font-bold">Market Leaderboard</h2>
           </div>
-          <p className="text-indigo-100 text-sm">Ranked by Return on Equity (ROE) — Round {leaderboard.length > 0 ? Math.max(...leaderboard.map(r => r.round || 0)) : 0}</p>
+          <p className="text-indigo-100 text-sm">Ranked by Economic Value Added (EVA) — Round {leaderboard.length > 0 ? Math.max(...leaderboard.map(r => r.round || 0)) : 0}</p>
         </div>
 
         <div className="overflow-x-auto">
@@ -38,14 +38,14 @@ const Leaderboard = ({ leaderboard, loading }) => {
                 <th className="px-6 py-4 text-left">Rank</th>
                 <th className="px-6 py-4 text-left">Firm Name</th>
                 <th className="px-6 py-4 text-right">Revenue</th>
-                <th className="px-6 py-4 text-right">Net Income</th>
                 <th className="px-6 py-4 text-right">ROE</th>
+                <th className="px-6 py-4 text-right">EVA (Score)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {leaderboard.map((firm, index) => {
                 const isTop3 = index < 3;
-                const trend = (firm.prevRoe !== null && firm.prevRoe !== undefined) ? (firm.roe || 0) - firm.prevRoe : 0;
+                const trend = (firm.prevEva !== null && firm.prevEva !== undefined) ? (firm.eva || 0) - firm.prevEva : 0;
 
                 return (
                   <tr key={firm.id || index} className={`hover:bg-slate-50 transition-colors ${isTop3 ? 'bg-indigo-50/30' : ''}`}>
@@ -62,19 +62,19 @@ const Leaderboard = ({ leaderboard, loading }) => {
                     <td className="px-6 py-4">
                       <span className="font-semibold text-slate-900">{firm.name || 'Unknown Firm'}</span>
                     </td>
-                    <td className="px-6 py-4 text-right text-slate-600">
+                    <td className="px-6 py-4 text-right text-slate-600 font-mono">
                       ${(firm.revenue || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </td>
                     <td className="px-6 py-4 text-right text-slate-600">
-                      ${(firm.netIncome || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      {(firm.roe || 0).toFixed(1)}%
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {firm.prevRoe !== null && firm.prevRoe !== undefined && (
-                          <span title={`Previous: ${firm.prevRoe.toFixed(1)}%`}>
-                            {trend > 0.1 ? (
+                        {firm.prevEva !== null && firm.prevEva !== undefined && (
+                          <span title={`Previous: $${firm.prevEva.toLocaleString()}`}>
+                            {trend > 1 ? (
                               <TrendingUp className="w-3 h-3 text-emerald-500" />
-                            ) : trend < -0.1 ? (
+                            ) : trend < -1 ? (
                               <TrendingUp className="w-3 h-3 text-red-500 rotate-180" />
                             ) : (
                               <div className="w-3 h-0.5 bg-slate-300 rounded-full" />
@@ -82,9 +82,9 @@ const Leaderboard = ({ leaderboard, loading }) => {
                           </span>
                         )}
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-sm font-bold ${
-                          (firm.roe || 0) >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                          (firm.eva || 0) >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                         }`}>
-                          {(firm.roe || 0).toFixed(1)}%
+                          ${(firm.eva || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                         </span>
                       </div>
                     </td>
@@ -99,14 +99,14 @@ const Leaderboard = ({ leaderboard, loading }) => {
       {/* Performance Insights */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-slate-500 text-xs font-bold uppercase mb-1">Top Performer</div>
+          <div className="text-slate-500 text-xs font-bold uppercase mb-1">Top EVA Performer</div>
           <div className="text-lg font-bold text-slate-900">{leaderboard[0]?.name || 'N/A'}</div>
-          <div className="text-indigo-600 font-bold">{(leaderboard[0]?.roe || 0).toFixed(1)}% ROE</div>
+          <div className="text-indigo-600 font-bold">${(leaderboard[0]?.eva || 0).toLocaleString()} EVA</div>
         </div>
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-slate-500 text-xs font-bold uppercase mb-1">Average ROE</div>
+          <div className="text-slate-500 text-xs font-bold uppercase mb-1">Average EVA</div>
           <div className="text-lg font-bold text-slate-900">
-            {(leaderboard.reduce((sum, f) => sum + (f.roe || 0), 0) / leaderboard.length).toFixed(1)}%
+            ${(leaderboard.reduce((sum, f) => sum + (f.eva || 0), 0) / leaderboard.length).toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </div>
           <div className="text-slate-400 text-xs">Market Average</div>
         </div>

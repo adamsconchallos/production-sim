@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Save, CheckCircle, XCircle, AlertCircle, Play, Wand2 } from 'lucide-react';
+import { Save, CheckCircle, XCircle, AlertCircle, Play, Wand2, Info } from 'lucide-react';
 import { calculateCreditRating } from '../../utils/creditRating';
+import { calculateLoanPayment } from '../../utils/finance';
 
 export default function LoanReviewPanel({ gameId, currentRound, firms, onPublish }) {
   const [requests, setRequests] = useState([]);
@@ -168,12 +169,14 @@ export default function LoanReviewPanel({ gameId, currentRound, firms, onPublish
                     <th className="p-3">Approved Amount</th>
                     <th className="p-3">Rate (%)</th>
                     <th className="p-3">Term (Yrs)</th>
+                    <th className="p-3">Annual Payment</th>
                     <th className="p-3">Status</th>
                 </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
                 {requests.map(r => {
                     const stat = firmStats[r.firm_id];
+                    const cuota = calculateLoanPayment(r.approved_amount, r.approved_rate, r.approved_term);
                     return (
                     <tr key={r.id} className="hover:bg-slate-50">
                         <td className="p-3">
@@ -213,6 +216,12 @@ export default function LoanReviewPanel({ gameId, currentRound, firms, onPublish
                                 onChange={(e) => updateRequest(r.id, 'approved_term', parseInt(e.target.value))}
                                 className="w-full border border-slate-300 rounded px-2 py-1"
                             />
+                        </td>
+                        <td className="p-3">
+                           <div className="font-mono font-bold text-indigo-600">
+                               ${Math.round(cuota).toLocaleString()}
+                           </div>
+                           <div className="text-[10px] text-slate-400 italic">x {r.approved_term} yrs</div>
                         </td>
                         <td className="p-3">
                             <select 

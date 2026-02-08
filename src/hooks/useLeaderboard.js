@@ -37,15 +37,16 @@ export function useLeaderboard(gameId) {
           id: firm.id,
           name: firm.name,
           roe: latestState?.state?.roe || 0,
-          prevRoe: prevState?.state?.roe || null,
+          eva: latestState?.state?.financials?.eva || latestState?.state?.eva || 0,
+          prevEva: prevState?.state?.financials?.eva || prevState?.state?.eva || null,
           revenue: latestState?.state?.revenue || 0,
           netIncome: latestState?.state?.netIncome || 0,
           round: latestState?.round || 0
         };
       }).filter(r => r.round > 0); // Only show firms that have at least one round of results
 
-      // Sort by ROE descending
-      results.sort((a, b) => b.roe - a.roe);
+      // Sort by EVA descending
+      results.sort((a, b) => b.eva - a.eva);
       setLeaderboard(results);
     } catch (err) {
       console.error('Error fetching leaderboard:', err);
