@@ -41,14 +41,14 @@ export function useMarketData(gameId) {
         if (row.type === 'Forecast') {
           newScenarios[p].forecast = {
             year: row.year,
-            price: { mean: parseFloat(row.price), sd: parseFloat(row.price_sd || 0) },
-            demand: { mean: parseFloat(row.demand), sd: parseFloat(row.demand_sd || 0) }
+            price: { mean: parseFloat(row.price) || 0, sd: parseFloat(row.price_sd || 0) || 0 },
+            demand: { mean: parseFloat(row.demand) || 0, sd: parseFloat(row.demand_sd || 0) || 0 }
           };
         } else {
           newScenarios[p].history.push({
             year: row.year,
-            price: parseFloat(row.price),
-            demand: parseFloat(row.demand)
+            price: parseFloat(row.price) || 0,
+            demand: parseFloat(row.demand) || 0
           });
         }
       });
@@ -111,11 +111,11 @@ export function useMarketData(gameId) {
         if (isForecast) {
           newScenarios[prod].forecast = {
             year,
-            price: { mean: parseFloat(price), sd: pSD },
-            demand: { mean: parseFloat(demand), sd: dSD }
+            price: { mean: parseFloat(price) || 0, sd: pSD || 0 },
+            demand: { mean: parseFloat(demand) || 0, sd: dSD || 0 }
           };
         } else {
-          newScenarios[prod].history.push({ year, price: parseFloat(price), demand: parseFloat(demand) });
+          newScenarios[prod].history.push({ year, price: parseFloat(price) || 0, demand: parseFloat(demand) || 0 });
         }
       });
 

@@ -3,9 +3,9 @@ const SimpleChart = ({ title, data, dataKey, color = "#4f46e5", format = "curren
   const width = 300;
   const padding = 20;
 
-  const values = data.map(d => d[dataKey]);
-  const min = Math.min(0, ...values);
-  const max = Math.max(...values);
+  const values = data.map(d => d[dataKey]).filter(v => !isNaN(v) && v !== null);
+  const min = values.length > 0 ? Math.min(0, ...values) : 0;
+  const max = values.length > 0 ? Math.max(...values) : 1;
   const range = (max - min) || 1;
 
   const getY = (val) => {
@@ -13,8 +13,13 @@ const SimpleChart = ({ title, data, dataKey, color = "#4f46e5", format = "curren
   };
 
   const formatY = (val) => {
+    if (isNaN(val) || val === null) return "—";
     if (format === 'percent') return val.toFixed(1) + '%';
-    if (Math.abs(val) >= 1000) return (val/1000).toFixed(1) + 'k';
+    const absV = Math.abs(val);
+    if (absV >= 1000) {
+      const kVal = val / 1000;
+      return Number.isInteger(kVal) ? kVal + "k" : kVal.toFixed(1) + "k";
+    }
     return val.toFixed(0);
   };
 

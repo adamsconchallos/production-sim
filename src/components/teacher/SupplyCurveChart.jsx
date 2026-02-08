@@ -81,21 +81,31 @@ const SupplyCurveChart = ({ submissions, product = 'A', parameters }) => {
           <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#cbd5e1" strokeWidth="1" />
           
           {/* Grid Lines */}
-          {[0, 0.25, 0.5, 0.75, 1].map(pct => (
-            <g key={pct}>
-              <line 
-                x1={padding} 
-                y1={getY(minPrice + pct * priceRange)} 
-                x2={width - padding} 
-                y2={getY(minPrice + pct * priceRange)} 
-                stroke="#f1f5f9" 
-                strokeWidth="1" 
-              />
-              <text x={padding - 5} y={getY(minPrice + pct * priceRange)} textAnchor="end" fontSize="10" fill="#94a3b8" alignmentBaseline="middle">
-                ${(minPrice + pct * priceRange).toFixed(0)}
-              </text>
-            </g>
-          ))}
+          {[0, 0.25, 0.5, 0.75, 1].map(pct => {
+            const val = minPrice + pct * priceRange;
+            let formatted = "";
+            if (val >= 1000) {
+              const kVal = val / 1000;
+              formatted = Number.isInteger(kVal) ? kVal + "k" : kVal.toFixed(1) + "k";
+            } else {
+              formatted = val.toFixed(0);
+            }
+            return (
+              <g key={pct}>
+                <line 
+                  x1={padding} 
+                  y1={getY(val)} 
+                  x2={width - padding} 
+                  y2={getY(val)} 
+                  stroke="#f1f5f9" 
+                  strokeWidth="1" 
+                />
+                <text x={padding - 5} y={getY(val)} textAnchor="end" fontSize="10" fill="#94a3b8" alignmentBaseline="middle">
+                  ${formatted}
+                </text>
+              </g>
+            );
+          })}
 
           {/* Demand Curve Line */}
           {demandPoints.length > 0 && (

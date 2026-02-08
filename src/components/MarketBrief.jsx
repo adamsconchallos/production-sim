@@ -63,17 +63,17 @@ const MarketBrief = ({ scenarios, onRefresh, loading, usingDefaults }) => {
           <tbody className="divide-y divide-slate-100">
             <tr>
               <td className="p-4 font-bold text-slate-700">Market Price</td>
-              <td className="p-4">${data.history[data.history.length-1].price.toFixed(2)}</td>
-              <td className="p-4 bg-indigo-50 font-bold text-indigo-700">${data.forecast.price.mean.toFixed(2)}</td>
-              <td className="p-4 text-red-600">${(data.forecast.price.mean - (2 * data.forecast.price.sd)).toFixed(2)}</td>
-              <td className="p-4 text-emerald-600">${(data.forecast.price.mean + (2 * data.forecast.price.sd)).toFixed(2)}</td>
+              <td className="p-4">${(data.history[data.history.length-1]?.price || 0).toFixed(2)}</td>
+              <td className="p-4 bg-indigo-50 font-bold text-indigo-700">${(data.forecast?.price?.mean || 0).toFixed(2)}</td>
+              <td className="p-4 text-red-600">${((data.forecast?.price?.mean || 0) - (2 * (data.forecast?.price?.sd || 0))).toFixed(2)}</td>
+              <td className="p-4 text-emerald-600">${((data.forecast?.price?.mean || 0) + (2 * (data.forecast?.price?.sd || 0))).toFixed(2)}</td>
             </tr>
             <tr>
               <td className="p-4 font-bold text-slate-700">Total Demand</td>
-              <td className="p-4">{data.history[data.history.length-1].demand.toLocaleString()}</td>
-              <td className="p-4 bg-indigo-50 font-bold text-indigo-700">{data.forecast.demand.mean.toLocaleString()}</td>
-              <td className="p-4 text-slate-500">{(data.forecast.demand.mean - (2 * data.forecast.demand.sd)).toLocaleString()}</td>
-              <td className="p-4 text-slate-500">{(data.forecast.demand.mean + (2 * data.forecast.demand.sd)).toLocaleString()}</td>
+              <td className="p-4">{(data.history[data.history.length-1]?.demand || 0).toLocaleString()}</td>
+              <td className="p-4 bg-indigo-50 font-bold text-indigo-700">{(data.forecast?.demand?.mean || 0).toLocaleString()}</td>
+              <td className="p-4 text-slate-500">{((data.forecast?.demand?.mean || 0) - (2 * (data.forecast?.demand?.sd || 0))).toLocaleString()}</td>
+              <td className="p-4 text-slate-500">{((data.forecast?.demand?.mean || 0) + (2 * (data.forecast?.demand?.sd || 0))).toLocaleString()}</td>
             </tr>
           </tbody>
         </table>

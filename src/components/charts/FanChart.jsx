@@ -15,7 +15,9 @@ const FanChart = ({ title, data, type = 'price', color = "#4f46e5" }) => {
     ...history.map(d => d[type]),
     fData.mean + (fData.sd * 2),
     fData.mean - (fData.sd * 2)
-  ];
+  ].filter(v => !isNaN(v) && v !== null);
+
+  if (allValues.length === 0 || history.length === 0) return <div className="p-4 text-slate-400 text-center">No Data Available</div>;
 
   const minVal = Math.min(...allValues) * 0.95;
   const maxVal = Math.max(...allValues) * 1.05;
@@ -27,17 +29,19 @@ const FanChart = ({ title, data, type = 'price', color = "#4f46e5" }) => {
   const totalPoints = history.length + 1;
   const lastHistIndex = history.length - 1;
 
-  if (history.length === 0) return <div>No Data</div>;
-
   // 1. History Line Path
   let histPath = "";
   history.forEach((d, i) => {
-    histPath += `${i === 0 ? 'M' : 'L'} ${getX(i, totalPoints)} ${getY(d[type])} `;
+    const val = d[type];
+    if (!isNaN(val)) {
+        histPath += `${histPath === "" ? 'M' : 'L'} ${getX(i, totalPoints)} ${getY(val)} `;
+    }
   });
 
   // 2. Forecast Cone
   const startX = getX(lastHistIndex, totalPoints);
-  const startY = getY(history[lastHistIndex][type]);
+  const lastVal = history[lastHistIndex][type];
+  const startY = getY(lastVal);
   const endX = getX(lastHistIndex + 1, totalPoints);
 
   const meanY = getY(fData.mean);
@@ -46,7 +50,18 @@ const FanChart = ({ title, data, type = 'price', color = "#4f46e5" }) => {
   const sd2UpY = getY(fData.mean + (fData.sd * 2));
   const sd2DownY = getY(fData.mean - (fData.sd * 2));
 
-  const formatVal = (v) => type === 'price' ? `$${v.toFixed(2)}` : v.toLocaleString();
+  const formatVal = (v) => {
+    if (isNaN(v) || v === null) return "—";
+    const absV = Math.abs(v);
+    let formatted = "";
+    if (absV >= 1000) {
+      const kVal = v / 1000;
+      formatted = Number.isInteger(kVal) ? kVal + "k" : kVal.toFixed(1) + "k";
+    } else {
+      formatted = v.toFixed(0);
+    }
+    return type === 'price' ? `$${formatted}` : formatted;
+  };
 
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [tooltipContent, setTooltipContent] = useState('');
