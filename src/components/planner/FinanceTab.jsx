@@ -1,5 +1,5 @@
-import React from 'react';
-import { DollarSign, PieChart } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { DollarSign, PieChart, AlertTriangle } from 'lucide-react';
 import InputCell from '../ui/InputCell';
 import { formatVal } from '../../utils/formatters';
 
@@ -33,7 +33,7 @@ export default function FinanceTab({ decisions, simulation, lastState, updateVal
     );
   };
 
-  const lastFin = lastState?.financials || lastState || {};
+  const lastFin = useMemo(() => lastState?.financials || lastState || {}, [lastState]);
   const projFin = simulation?.financials || {};
 
   return (
@@ -44,6 +44,20 @@ export default function FinanceTab({ decisions, simulation, lastState, updateVal
         <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
             <DollarSign className="w-4 h-4" /> Cash Management
         </h3>
+
+        {projFin.cash < 0 && (
+          <div className="flex items-start gap-2 text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm mb-6 animate-in fade-in slide-in-from-top-2">
+            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+            <div>
+              <div className="font-bold">Projected Cash Deficit: {formatVal(projFin.cash, 'currency')}</div>
+              <div className="text-red-600 mt-0.5">
+                Your company is projected to run out of cash. Consider requesting more financing on the 
+                <span className="font-bold"> Investment</span> tab or reducing costs and dividends.
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1">Repay ST Debt</label>

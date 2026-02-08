@@ -17,7 +17,7 @@ import { calculateYear } from './engine/simulation';
 import { useMarketData } from './hooks/useMarketData';
 import { useLeaderboard } from './hooks/useLeaderboard';
 import { useLoanRequests } from './hooks/useLoanRequests';
-import { getGridRows } from './constants/gridRows';
+import { calculateCreditRating } from './utils/creditRating';
 
 import LoginPage from './components/LoginPage';
 import TeacherDashboard from './components/TeacherDashboard';
@@ -272,12 +272,27 @@ function StratFi({ session, logout, onExitDemo }) {
         limits: lastState.state.limits || { machine: 1000, labour: 1000, material: 500 }
     };
 
+    // Calculate dynamic rates based on credit rating (including proposed debt)
+    const baseRates = startState.rates || { st: 10, lt: 5 };
+    const baseFinancials = lastState?.financials || startState;
+    const projectedForCredit = {
+      ...baseFinancials,
+      stDebt: (baseFinancials.stDebt || 0) + Number(decisions.finance.newST || 0),
+      ltDebt: (baseFinancials.ltDebt || 0) + Number(decisions.finance.newLT || 0),
+    };
+    const creditProfile = calculateCreditRating(projectedForCredit, baseRates);
+    const dynamicLoanTerms = {
+      st: { rate: creditProfile.estimatedST },
+      lt: { rate: creditProfile.estimatedLT }
+    };
+
     return calculateYear(
         startState, 
         decisions, 
         lastState.efficiency || 0, 
         lastState.inventory_details, 
-        startState.rates
+        startState.rates,
+        dynamicLoanTerms
     );
   }, [lastState, decisions, gameData, history]);
 

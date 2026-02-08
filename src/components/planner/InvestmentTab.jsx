@@ -2,10 +2,9 @@ import React, { useMemo } from 'react';
 import { TrendingUp, DollarSign, Clock, CheckCircle, AlertCircle, XCircle, ShieldAlert, ShieldCheck } from 'lucide-react';
 import InputCell from '../ui/InputCell';
 import Tooltip from '../ui/Tooltip';
-import { formatVal } from '../../utils/formatters';
 import { calculateCreditRating } from '../../utils/creditRating';
 
-const LoanStatusCard = ({ request, type }) => {
+const LoanStatusCard = ({ request }) => {
   if (!request) return null; 
 
   const { status, approved_amount, approved_rate, approved_term, requested_amount } = request;
@@ -54,11 +53,15 @@ export default function InvestmentTab({ decisions, simulation, lastState, update
   // Calculate Credit Rating
   const creditProfile = useMemo(() => {
     const baseRates = gameData?.rates || { st: 10, lt: 5 };
-    // Use lastState (beginning of round) for rating
-    // Fallback to simulation start if lastState is missing (e.g. demo mode)
+    // Use lastState (beginning of round) for rating but include new decisions
     const financials = lastState?.financials || lastState || {}; 
-    return calculateCreditRating(financials, baseRates);
-  }, [lastState, gameData]);
+    const projected = {
+      ...financials,
+      stDebt: (financials.stDebt || 0) + Number(decisions.finance.newST || 0),
+      ltDebt: (financials.ltDebt || 0) + Number(decisions.finance.newLT || 0),
+    };
+    return calculateCreditRating(projected, baseRates);
+  }, [lastState, gameData, decisions.finance.newST, decisions.finance.newLT]);
 
   return (
     <div className="space-y-6">
