@@ -45,7 +45,7 @@ const InstructorLeaderboard = ({ leaderboard, loading, currentRound }) => {
                 <th className="px-4 py-4 text-right" title="Return on Equity">ROE</th>
                 <th className="px-4 py-4 text-right" title="Net Income / Revenue">Profit Margin</th>
                 <th className="px-4 py-4 text-right" title="Revenue / Total Assets">Asset Turnover</th>
-                <th className="px-4 py-4 text-right" title="Total Assets / Equity">Equity Multiplier</th>
+                <th className="px-4 py-4 text-right" title="Total Assets / Total Equity (Capital + Retained Earnings)">Equity Multiplier</th>
                 <th className="px-4 py-4 text-right" title="Net Income / Total Assets">ROA</th>
               </tr>
             </thead>
@@ -128,7 +128,7 @@ const InstructorLeaderboard = ({ leaderboard, loading, currentRound }) => {
             </div>
             <div className="bg-white/60 p-2 rounded border border-indigo-100">
               <div className="font-bold text-purple-700">Equity Multiplier</div>
-              <div className="text-slate-600">Total Assets / Equity</div>
+              <div className="text-slate-600">Total Assets / Total Equity</div>
             </div>
             <div className="bg-white/60 p-2 rounded border border-indigo-100">
               <div className="font-bold text-amber-700">ROA</div>

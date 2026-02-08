@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Settings,
   ClipboardList,
@@ -8,7 +8,8 @@ import {
   Trophy,
   Download,
   LogOut,
-  HelpCircle
+  HelpCircle,
+  Printer
 } from 'lucide-react';
 
 import { supabase } from './lib/supabase';
@@ -30,6 +31,7 @@ import SimpleChart from './components/charts/SimpleChart';
 import Leaderboard from './components/Leaderboard';
 import Footer from './components/ui/Footer';
 import TutorialPage from './components/TutorialPage';
+import FirmPerformanceReport from './components/FirmPerformanceReport';
 
 // --- Root App: Auth Gate ---
 export default function App() {
@@ -85,31 +87,35 @@ export default function App() {
 
 // --- Planner App (Student / Demo) ---
 function StratFi({ session, logout, onExitDemo }) {
+  const getDefaultDecisions = () => ({
+    qty: { A: 0, B: 0, C: 0 },
+    sales: { A: 0, B: 0, C: 0 },
+    price: { A: 33, B: 32, C: 31 },
+    inv: { machine: 0, labour: 0 },
+    finance: { newST: 0, newLT: 0, payST: 0, payLT: 0, div: 0 }
+  });
 
   const [view, setView] = useState('grid');
   const [showSetup, setShowSetup] = useState(!session); // hide setup in game mode
   const [showTutorial, setShowTutorial] = useState(false);
-
-  // --- Market Data ---
-  const { scenarios, isLoadingData, usingDefaults, fetchMarketData } = useMarketData(session?.gameId);
-
-  // --- Leaderboard ---
-  const { leaderboard, loading: isLoadingLeaderboard } = useLeaderboard(session?.gameId);
 
   // --- Game Data State ---
   const [gameData, setGameData] = useState(null);
   const [history, setHistory] = useState([]); // Array of cleared firm_states
   const [lastState, setLastState] = useState(null); // The starting point for current round
 
+  // --- Market Data ---
+  const { scenarios, isLoadingData, usingDefaults, fetchMarketData } = useMarketData(session?.gameId, gameData?.current_round);
+
+  // --- Leaderboard ---
+  const { leaderboard, loading: isLoadingLeaderboard } = useLeaderboard(session?.gameId);
+
   // --- Loan Requests (NEW) ---
   const { loanRequests, allApprovedLoans } = useLoanRequests(session, gameData);
 
   // --- Decisions State (Current Round Only) ---
-  const [decisions, setDecisions] = useState({
-    qty: { A: 0, B: 0, C: 0 }, sales: { A: 0, B: 0, C: 0 }, price: { A: 33, B: 32, C: 31 },
-    inv: { machine: 0, labour: 0 },
-    finance: { newST: 0, newLT: 0, payST: 0, payLT: 0, div: 0 }
-  });
+  const [decisions, setDecisions] = useState(getDefaultDecisions);
+  const loadedDecisionsRoundRef = useRef(null);
 
   // --- Setup State (for Demo Mode) ---
   const [demoSetup, setDemoSetup] = useState({
@@ -131,6 +137,7 @@ function StratFi({ session, logout, onExitDemo }) {
   useEffect(() => {
     if (!session) {
         // DEMO MODE: Initialize lastState from demoSetup
+        loadedDecisionsRoundRef.current = null;
         setLastState({
             state: demoSetup,
             inventory_details: { A:{units:0,value:0}, B:{units:0,value:0}, C:{units:0,value:0} },
@@ -201,25 +208,25 @@ function StratFi({ session, logout, onExitDemo }) {
             setHistory([{ round: 0, ...initialState }]); 
         }
 
-        // 4. Load Existing Decisions
-        const { data: existingDec } = await supabase
-          .from('decisions')
-          .select('data')
-          .eq('game_id', session.gameId)
-          .eq('firm_id', session.firmId)
-          .eq('round', game.current_round)
-          .single();
+        // 4. Load decisions only once per round.
+        // This prevents polling from overwriting in-progress student edits.
+        if (loadedDecisionsRoundRef.current !== game.current_round) {
+          const { data: existingDec } = await supabase
+            .from('decisions')
+            .select('data')
+            .eq('game_id', session.gameId)
+            .eq('firm_id', session.firmId)
+            .eq('round', game.current_round)
+            .single();
 
-        if (cancelled) return;
+          if (cancelled) return;
 
-        if (existingDec?.data) {
-          setDecisions(existingDec.data);
-        } else {
-          setDecisions({
-             qty: { A: 0, B: 0, C: 0 }, sales: { A: 0, B: 0, C: 0 }, price: { A: 33, B: 32, C: 31 },
-             inv: { machine: 0, labour: 0 },
-             finance: { newST: 0, newLT: 0, payST: 0, payLT: 0, div: 0 }
-          });
+          if (existingDec?.data) {
+            setDecisions(existingDec.data);
+          } else {
+            setDecisions(getDefaultDecisions());
+          }
+          loadedDecisionsRoundRef.current = game.current_round;
         }
       }
     }
@@ -237,9 +244,15 @@ function StratFi({ session, logout, onExitDemo }) {
       )
       .subscribe();
 
+    // 3. Polling Fallback (ensures UI stays up to date if WebSocket fails)
+    const pollInterval = setInterval(() => {
+        loadData();
+    }, 30000); // every 30 seconds
+
     return () => {
         cancelled = true;
         supabase.removeChannel(channel);
+        clearInterval(pollInterval);
     };
   }, [session, demoSetup]); // Add demoSetup dependency so demo mode updates work
 
@@ -368,7 +381,8 @@ function StratFi({ session, logout, onExitDemo }) {
   if (!simulation) return <div className="p-10 text-center text-slate-400">Loading Simulation...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-800 p-4">
+    <>
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-800 p-4 no-print">
       {/* GLOBAL STYLES FOR REMOVING INPUT SPINNERS */}
       <style>{`
         input[type=number]::-webkit-inner-spin-button,
@@ -442,6 +456,13 @@ function StratFi({ session, logout, onExitDemo }) {
                 title="Download CSV"
             >
                 <Download className="w-4 h-4" />
+            </button>
+            <button
+                onClick={() => window.print()}
+                className="px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all text-slate-300 hover:text-white hover:bg-slate-700"
+                title="Print Firm Report"
+            >
+                <Printer className="w-4 h-4" />
             </button>
             {!isGameMode && (
               <button
@@ -572,5 +593,15 @@ function StratFi({ session, logout, onExitDemo }) {
 
       </main>
     </div>
+    <FirmPerformanceReport
+      firmName={session?.firmName || 'Demo Firm'}
+      roundNumber={gameData?.current_round || 1}
+      roundStatus={gameData?.round_status || 'open'}
+      decisions={decisions}
+      simulation={simulation}
+      lastState={lastState}
+      rates={lastState?.state?.rates || gameData?.rates || { st: 10, lt: 5 }}
+    />
+    </>
   );
 }

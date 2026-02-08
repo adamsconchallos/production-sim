@@ -9,6 +9,7 @@ export default function LoanReviewPanel({ gameId, currentRound, firms, onPublish
   const [firmStats, setFirmStats] = useState({}); // firmId -> { rating, estimatedST, estimatedLT, ... }
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [message, setMessage] = useState(null);
   const [globalRates, setGlobalRates] = useState({ st: 10, lt: 5 });
 
@@ -104,6 +105,18 @@ export default function LoanReviewPanel({ gameId, currentRound, firms, onPublish
     }
   };
 
+  const handlePublish = async () => {
+    setPublishing(true);
+    setMessage(null);
+    try {
+      await onPublish();
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Failed to publish loan decisions.' });
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   const getFirmName = (id) => firms.find(f => f.id === id)?.name || id.substring(0, 8);
 
   const getStatusColor = (status) => {
@@ -123,10 +136,11 @@ export default function LoanReviewPanel({ gameId, currentRound, firms, onPublish
             <h3 className="font-bold text-slate-700 mb-2">Loan Review</h3>
             <p className="text-slate-500">No loan requests submitted for this round.</p>
             <button 
-                onClick={onPublish}
-                className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-bold"
+                onClick={handlePublish}
+                disabled={publishing}
+                className="mt-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded font-bold"
             >
-                Skip & Publish Round
+                {publishing ? 'Publishing...' : 'Skip & Publish Round'}
             </button>
         </div>
       );
@@ -243,10 +257,11 @@ export default function LoanReviewPanel({ gameId, currentRound, firms, onPublish
 
       <div className="mt-6 border-t border-slate-100 pt-4 flex justify-end">
           <button
-            onClick={onPublish}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2"
+            onClick={handlePublish}
+            disabled={publishing}
+            className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2"
           >
-              <Play className="w-4 h-4" /> Publish Loan Decisions
+              <Play className="w-4 h-4" /> {publishing ? 'Publishing...' : 'Publish Loan Decisions'}
           </button>
       </div>
       <p className="text-right text-xs text-slate-400 mt-2">

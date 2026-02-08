@@ -40,14 +40,14 @@ export function useInstructorLeaderboard(gameId) {
         const revenue = fin.revenue || 0;
         const netIncome = fin.netIncome || 0;
         const totalAssets = fin.totalAssets || 0;
-        const equity = fin.equity || 1; // Avoid division by zero
-        const roe = fin.roe || 0;
+        const totalEquity = (fin.equity || 0) + (fin.retainedEarnings || 0);
+        const roe = totalEquity > 0 ? (netIncome / totalEquity) * 100 : 0;
 
         // DuPont Analysis Components
         const profitMargin = revenue !== 0 ? (netIncome / revenue) * 100 : 0;
         const assetTurnover = totalAssets !== 0 ? revenue / totalAssets : 0;
         const roa = totalAssets !== 0 ? (netIncome / totalAssets) * 100 : 0;
-        const equityMultiplier = equity !== 0 ? totalAssets / equity : 0;
+        const equityMultiplier = totalEquity > 0 ? totalAssets / totalEquity : 0;
 
         // Verify DuPont: ROE = Profit Margin × Asset Turnover × Equity Multiplier
         // const dupontROE = (profitMargin / 100) * assetTurnover * equityMultiplier * 100;
@@ -63,7 +63,9 @@ export function useInstructorLeaderboard(gameId) {
           revenue: revenue,
           netIncome: netIncome,
           totalAssets: totalAssets,
-          equity: equity,
+          equity: totalEquity,
+          capital: fin.equity || 0,
+          retainedEarnings: fin.retainedEarnings || 0,
           round: latestState.round
         };
       }).filter(r => r !== null);

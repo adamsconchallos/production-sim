@@ -21,7 +21,8 @@ import {
   TrendingUp,
   CheckCircle,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  Calculator
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { clearMarket as runClearMarket, computeFirmActualResults, calculateAR1Forecast } from '../engine/marketClearing';
@@ -55,17 +56,23 @@ const TeacherDashboard = ({ session, logout }) => {
   const [loadingGames, setLoadingGames] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newGameName, setNewGameName] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
 
   // 1. Fetch instructor's games
   const fetchGames = useCallback(async () => {
     if (!supabase || !session?.userId) return;
     setLoadingGames(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('games')
-        .select('id, name, join_code, current_round, round_status, created_at')
-        .eq('teacher_id', session.userId)
-        .order('created_at', { ascending: false });
+        .select('id, name, join_code, current_round, round_status, created_at, is_archived')
+        .eq('teacher_id', session.userId);
+      
+      if (!showArchived) {
+        query = query.eq('is_archived', false);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
       
       if (error) throw error;
       setGames(data || []);
@@ -74,7 +81,7 @@ const TeacherDashboard = ({ session, logout }) => {
     } finally {
       setLoadingGames(false);
     }
-  }, [session]);
+  }, [session, showArchived]);
 
   useEffect(() => {
     fetchGames();
@@ -96,7 +103,7 @@ const TeacherDashboard = ({ session, logout }) => {
           teacher_pin: '0000',
           current_round: 1,
           round_status: 'setup',
-          max_rounds: 3,
+          max_rounds: 99,
           setup: { 
             cash: 29200, 
             fixedAssets: 20000, 
@@ -156,6 +163,40 @@ const TeacherDashboard = ({ session, logout }) => {
     }
   };
 
+  const handleArchiveGame = async (e, gameId, gameName) => {
+    if (e) e.stopPropagation();
+    if (!confirm(`Are you sure you want to delete "${gameName}"? This will remove it from your view but preserve the data.`)) return false;
+
+    try {
+      const { error } = await supabase
+        .from('games')
+        .update({ is_archived: true })
+        .eq('id', gameId);
+
+      if (error) throw error;
+      await fetchGames();
+      return true;
+    } catch (err) {
+      alert("Failed to archive game: " + err.message);
+      return false;
+    }
+  };
+
+  const handleRestoreGame = async (e, gameId) => {
+    e.stopPropagation();
+    try {
+      const { error } = await supabase
+        .from('games')
+        .update({ is_archived: false })
+        .eq('id', gameId);
+
+      if (error) throw error;
+      fetchGames();
+    } catch (err) {
+      alert("Failed to restore game: " + err.message);
+    }
+  };
+
   if (!selectedGameId) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 p-6">
@@ -177,9 +218,21 @@ const TeacherDashboard = ({ session, logout }) => {
 
         <main className="max-w-5xl mx-auto">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-              <LayoutGrid className="w-5 h-5" /> Your Games
-            </h2>
+            <div className="flex items-center gap-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <LayoutGrid className="w-5 h-5" /> Your Games
+              </h2>
+              <button 
+                onClick={() => setShowArchived(!showArchived)}
+                className={`text-xs px-3 py-1 rounded-full border transition-all font-bold ${
+                  showArchived 
+                    ? 'bg-slate-700 border-slate-600 text-white' 
+                    : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                }`}
+              >
+                {showArchived ? 'Hide Archived' : 'Show Archived'}
+              </button>
+            </div>
             <button
               onClick={() => setShowCreateForm(true)}
               className="bg-[#4fd1c5] hover:bg-[#38b2ac] text-[#1a365d] px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-sm transition-all"
@@ -222,20 +275,47 @@ const TeacherDashboard = ({ session, logout }) => {
               <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Calculator className="w-8 h-8 text-slate-300" />
               </div>
-              <h3 className="text-lg font-bold text-slate-700">No games found</h3>
-              <p className="text-slate-500 mb-6">You haven't created any simulations yet. Click the button above to start.</p>
+              <h3 className="text-lg font-bold text-slate-700">No {showArchived ? 'archived ' : ''}games found</h3>
+              <p className="text-slate-500 mb-6">You haven't {showArchived ? 'archived' : 'created'} any simulations yet.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {games.map(g => (
-                <button
+                <div
                   key={g.id}
-                  onClick={() => setSelectedGameId(g.id)}
-                  className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-[#4fd1c5] text-left transition-all group"
+                  onClick={() => !g.is_archived && setSelectedGameId(g.id)}
+                  className={`bg-white p-6 rounded-xl border shadow-sm text-left transition-all group relative ${
+                    g.is_archived 
+                      ? 'opacity-60 border-slate-200 grayscale-[0.5]' 
+                      : 'hover:shadow-md hover:border-[#4fd1c5] cursor-pointer'
+                  }`}
                 >
+                  {g.is_archived ? (
+                    <button
+                      onClick={(e) => handleRestoreGame(e, g.id)}
+                      className="absolute top-4 right-4 p-2 text-slate-400 hover:text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      title="Restore game"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={(e) => handleArchiveGame(e, g.id, g.name)}
+                      className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      title="Delete game"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                   <div className="flex justify-between items-start mb-4">
-                    <h3 className="font-bold text-slate-900 group-hover:text-[#1a365d] transition-colors">{g.name}</h3>
+                    <h3 className={`font-bold transition-colors pr-8 ${
+                      g.is_archived ? 'text-slate-500' : 'text-slate-900 group-hover:text-[#1a365d]'
+                    }`}>
+                      {g.name}
+                      {g.is_archived && <span className="ml-2 text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-400">ARCHIVED</span>}
+                    </h3>
                     <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
+                      g.is_archived ? 'bg-slate-50 text-slate-400' :
                       g.round_status === 'open' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
                     }`}>
                       {g.round_status}
@@ -252,7 +332,7 @@ const TeacherDashboard = ({ session, logout }) => {
                       <Calendar className="w-3.5 h-3.5" /> Created: {new Date(g.created_at).toLocaleDateString()}
                     </div>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           )}
@@ -267,11 +347,15 @@ const TeacherDashboard = ({ session, logout }) => {
       session={session} 
       onBack={() => setSelectedGameId(null)} 
       logout={logout}
+      onArchive={async (e) => {
+        const success = await handleArchiveGame(e, selectedGameId, games.find(g => g.id === selectedGameId)?.name);
+        if (success) setSelectedGameId(null);
+      }}
     />
   );
 };
 
-function GameManagement({ gameId, session, onBack, logout }) {
+function GameManagement({ gameId, session, onBack, logout, onArchive }) {
   const [game, setGame] = useState(null);
   const [firms, setFirms] = useState([]);
   const [submissions, setSubmissions] = useState([]);
@@ -410,7 +494,7 @@ function GameManagement({ gameId, session, onBack, logout }) {
   };
 
   const openRound = async () => {
-    const nextRound = (game.current_round || 0) + 1;
+    const nextRound = game.round_status === 'setup' ? game.current_round : (game.current_round || 0) + 1;
     setSubmissions([]);
     await supabase.from('games').update({ current_round: nextRound, round_status: 'open' }).eq('id', gameId);
     fetchGame();
@@ -423,8 +507,19 @@ function GameManagement({ gameId, session, onBack, logout }) {
   };
 
   const publishLoans = async () => {
-    await supabase.from('games').update({ round_status: 'loans_reviewed' }).eq('id', gameId);
-    fetchGame();
+    try {
+      const { error } = await supabase
+        .from('games')
+        .update({ round_status: 'loans_reviewed' })
+        .eq('id', gameId);
+      if (error) throw error;
+
+      setMessage({ type: 'success', text: 'Loan decisions published.' });
+      setTab('round');
+      fetchGame();
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Failed to publish loan decisions: ' + err.message });
+    }
   };
 
   const clearMarket = async () => {
@@ -507,13 +602,19 @@ function GameManagement({ gameId, session, onBack, logout }) {
 
         ['A', 'B', 'C'].forEach(p => {
           const prodResult = results[p];
-          const forecastRow = currentMarket.find(m => m.product === p && m.type === 'Forecast');
+          // Find the LATEST forecast row for this product (highest sort_order)
+          const forecastRows = currentMarket
+            .filter(m => m.product === p && m.type === 'Forecast')
+            .sort((a, b) => b.sort_order - a.sort_order);
+          
+          const forecastRow = forecastRows[0];
           
           if (forecastRow) {
             // Forecast becomes History with actual clearing results
             marketUpdates.push({
               id: forecastRow.id,
               type: 'History',
+              year: `R${gameConfig.current_round}`,
               price: prodResult.price,
               demand: prodResult.qty
             });
@@ -543,7 +644,19 @@ function GameManagement({ gameId, session, onBack, logout }) {
           }
         });
 
-        if (marketUpdates.length > 0) await supabase.from('market_data').upsert(marketUpdates);
+        // Convert forecast rows to history (use update, not upsert, since rows already exist)
+        for (const upd of marketUpdates) {
+          await supabase.from('market_data')
+            .update({
+              type: upd.type,
+              year: upd.year,
+              price: upd.price,
+              demand: upd.demand,
+              price_sd: null,
+              demand_sd: null
+            })
+            .eq('id', upd.id);
+        }
         if (marketInserts.length > 0) await supabase.from('market_data').insert(marketInserts);
       }
 
@@ -625,21 +738,15 @@ function GameManagement({ gameId, session, onBack, logout }) {
     setClearing(true);
     
     try {
-      // 1. Reset Game Record
-      await supabase.from('games').update({ 
-        current_round: 1, 
-        round_status: 'setup' 
-      }).eq('id', gameId);
+      // 1. Delete all round-specific data sequentially and fail fast on error.
+      // If we continue after a failed delete, stale rows can leak into the next reset.
+      const tablesToDelete = ['decisions', 'firm_state', 'market_data', 'loan_requests'];
+      for (const table of tablesToDelete) {
+        const { error: delError } = await supabase.from(table).delete().eq('game_id', gameId);
+        if (delError) throw new Error(`Failed deleting ${table}: ${delError.message}`);
+      }
 
-      // 2. Delete all round-specific data
-      await Promise.all([
-        supabase.from('decisions').delete().eq('game_id', gameId),
-        supabase.from('firm_state').delete().eq('game_id', gameId),
-        supabase.from('market_data').delete().eq('game_id', gameId),
-        supabase.from('loan_requests').delete().eq('game_id', gameId)
-      ]);
-
-      // 3. Re-initialize Market Data
+      // 2. Re-initialize Market Data from Default Scenarios
       const marketInserts = [];
       let sortOrder = 1;
       ['A', 'B', 'C'].forEach(prod => {
@@ -667,9 +774,11 @@ function GameManagement({ gameId, session, onBack, logout }) {
           sort_order: sortOrder++
         });
       });
-      await supabase.from('market_data').insert(marketInserts);
+      
+      const { error: insError } = await supabase.from('market_data').insert(marketInserts);
+      if (insError) throw insError;
 
-      // 4. Re-initialize Firm State (Round 0)
+      // 3. Re-initialize Firm State (Round 0) for all firms
       if (firms.length > 0) {
         const stateInserts = firms.map(f => ({
           game_id: gameId,
@@ -679,14 +788,30 @@ function GameManagement({ gameId, session, onBack, logout }) {
           inventory_details: { A: { units: 0, value: 0 }, B: { units: 0, value: 0 }, C: { units: 0, value: 0 } },
           efficiency: 0
         }));
-        await supabase.from('firm_state').upsert(stateInserts, { onConflict: 'game_id,firm_id,round' });
+        const { error: stateError } = await supabase.from('firm_state').upsert(stateInserts, { onConflict: 'game_id,firm_id,round' });
+        if (stateError) throw stateError;
       }
 
+      // 4. Reset game metadata last so clients refresh only after data is rebuilt.
+      const { error: gameError } = await supabase.from('games').update({ 
+        current_round: 1, 
+        round_status: 'setup',
+        parameters: {
+          A: { intercept: 50, slope: 0.002, growth: 1.0 },
+          B: { intercept: 60, slope: 0.003, growth: 1.0 },
+          C: { intercept: 70, slope: 0.005, growth: 1.0 }
+        }
+      }).eq('id', gameId);
+
+      if (gameError) throw gameError;
+
       setMessage({ type: 'success', text: 'Game reset successfully.' });
-      fetchGame();
-      fetchFirms();
-      fetchMarketData();
-      refreshLeaderboard();
+      await Promise.all([
+        fetchGame(),
+        fetchFirms(),
+        fetchMarketData(),
+        refreshLeaderboard()
+      ]);
     } catch (err) {
       console.error(err);
       setMessage({ type: 'error', text: 'Failed to reset game: ' + err.message });
@@ -813,10 +938,14 @@ function GameManagement({ gameId, session, onBack, logout }) {
               </div>
             )}
             <div className="flex gap-2">
-              {game?.round_status !== 'open' && game?.current_round < 5 && <button onClick={openRound} className="bg-emerald-600 text-white px-4 py-2 rounded font-bold">Open Round {game?.current_round + 1}</button>}
+              {game?.round_status !== 'open' && <button onClick={openRound} className="bg-emerald-600 text-white px-4 py-2 rounded font-bold">Open Round {game?.round_status === 'setup' ? game?.current_round : (game?.current_round || 0) + 1}</button>}
               {game?.round_status === 'open' && <button onClick={closeSubmissions} className="bg-amber-600 text-white px-4 py-2 rounded font-bold">Close Round</button>}
               {game?.round_status === 'loans_reviewed' && <button onClick={clearMarket} className="bg-[#4fd1c5] text-[#1a365d] px-4 py-2 rounded font-bold hover:bg-[#38b2ac]">Clear Market</button>}
-              <button onClick={resetGame} className="text-red-600 px-4 py-2">Reset</button>
+              <div className="flex-1"></div>
+              <button onClick={resetGame} className="text-red-600 px-4 py-2 hover:bg-red-50 rounded transition-colors">Reset</button>
+              <button onClick={onArchive} className="text-slate-500 px-4 py-2 hover:bg-slate-100 rounded transition-colors flex items-center gap-2">
+                <Trash2 className="w-4 h-4" /> Archive
+              </button>
             </div>
           </div>
         )}
