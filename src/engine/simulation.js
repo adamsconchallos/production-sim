@@ -173,6 +173,10 @@ export function calculateYear(
   let endST = start.stDebt - actualPayST - repaidSTFromMandatory + decision.finance.newST;
   let endLT = start.ltDebt - actualPayLT - repaidLTFromMandatory + decision.finance.newLT;
 
+  let finalLiquidationLoss = liquidationLoss;
+  let finalEquity = start.equity;
+  let finalRE = (start.retainedEarnings || 0) + netIncome - decision.finance.div - liquidationLoss;
+
   // Final Round Settlement
   if (isFinalRound) {
     const totalRemainingDebt = endST + endLT;
@@ -188,25 +192,30 @@ export function calculateYear(
         endFixedAssets = 0;
         endST = 0;
         endLT = 0;
-        liquidationLoss += (start.equity + netIncome - liquidationLoss); // Wipe out everything
+        // Total liquidation loss is whatever is needed to bring Equity to 0
+        finalLiquidationLoss = (start.equity + (start.retainedEarnings || 0) + netIncome - decision.finance.div);
+        finalEquity = 0;
+        finalRE = 0;
     } else {
         // Full Settlement
         endCash = availableToSettle - totalRemainingDebt;
-        liquidationLoss += (endInventoryValue - finalRecoveryInventory) + (endFixedAssets - finalRecoveryAssets);
+        finalLiquidationLoss += (endInventoryValue - finalRecoveryInventory) + (endFixedAssets - finalRecoveryAssets);
         endInventoryValue = 0;
         endFixedAssets = 0;
         endST = 0;
         endLT = 0;
+        finalRE = (start.retainedEarnings || 0) + netIncome - decision.finance.div - finalLiquidationLoss;
     }
   }
 
   const endTotalAssets = endCash + endInventoryValue + endFixedAssets;
-  const endRE = start.retainedEarnings + netIncome - decision.finance.div - liquidationLoss;
-  const endEquity = Math.max(0, start.equity + (endRE - start.retainedEarnings));
-  const endTotalLiabEquity = endST + endLT + endEquity;
+  const endRE = finalRE;
+  const endEquity = finalEquity;
+  const endTotalLiabEquity = endST + endLT + endEquity + endRE;
   const totalDebt = endST + endLT;
 
-  const eva = calculateEVA(netIncome - liquidationLoss, start.equity, COST_OF_EQUITY);
+  const totalEquity = endEquity + endRE;
+  const eva = calculateEVA(netIncome - finalLiquidationLoss, (start.equity + (start.retainedEarnings || 0)), COST_OF_EQUITY);
 
   // 7. Next Round State
   const addedMachineCap = (decision.inv.machine / 1000) * CAPACITY_PER_1000_MACHINE;
@@ -221,11 +230,11 @@ export function calculateYear(
   const nextEfficiency = prevEfficiency + addedEfficiency;
 
   // 8. Ratios
-  const roe = endEquity > 0 ? (netIncome / endEquity) * 100 : 0;
+  const roe = totalEquity > 0 ? (netIncome / totalEquity) * 100 : 0;
   const roa = endTotalAssets > 0 ? (netIncome / endTotalAssets) * 100 : 0;
   const assetTurnover = endTotalAssets > 0 ? revenue / endTotalAssets : 0;
-  const equityMultiplier = endEquity > 0 ? endTotalAssets / endEquity : 0;
-  const debtEquityRatio = endEquity > 0 ? totalDebt / endEquity : 0;
+  const equityMultiplier = totalEquity > 0 ? endTotalAssets / totalEquity : 0;
+  const debtEquityRatio = totalEquity > 0 ? totalDebt / totalEquity : 0;
 
   return {
     financials: {
@@ -255,6 +264,7 @@ export function calculateYear(
         stDebt: endST,
         ltDebt: endLT,
         equity: endEquity,
+        retainedEarnings: endRE,
         totalLiabEquity: endTotalLiabEquity,
         totalUnitsSold,
         inventoryUnitsA: nextInventoryDetails.A.units,

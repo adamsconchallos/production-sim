@@ -80,6 +80,7 @@ const PlannerGrid = ({ decisions, simulation, updateVal, collapsed, toggleSectio
       { type: 'output', label: 'ST Debt', id: 'stDebt', format: 'currency', section: 'pos' },
       { type: 'output', label: 'LT Debt', id: 'ltDebt', format: 'currency', section: 'pos' },
       { type: 'output', label: 'Equity', id: 'equity', format: 'currency', section: 'pos' },
+      { type: 'output', label: 'Retained Earnings', id: 'retainedEarnings', format: 'currency', section: 'pos' },
       { type: 'output', label: 'Total Liab. & Equity', id: 'totalLiabEquity', format: 'currency', highlight: true, section: 'pos' },
     ];
 

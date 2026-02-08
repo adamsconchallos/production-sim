@@ -10,7 +10,8 @@ export function calculateCreditRating(financials, baseRates) {
 
   // 1. Calculate Ratios
   const totalDebt = (financials.stDebt || 0) + (financials.ltDebt || 0);
-  const equity = financials.equity || 1; // Avoid div by zero
+  const totalEquity = (financials.equity || 0) + (financials.retainedEarnings || 0);
+  const equity = totalEquity || 1; // Avoid div by zero
   const debtToEquity = totalDebt / equity;
 
   const currentAssets = (financials.cash || 0) + (financials.inventory || 0);

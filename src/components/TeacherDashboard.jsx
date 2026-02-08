@@ -18,7 +18,10 @@ import {
   Calendar,
   Key,
   Upload,
-  TrendingUp
+  TrendingUp,
+  CheckCircle,
+  Clock,
+  AlertTriangle
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { clearMarket as runClearMarket, computeFirmActualResults, calculateAR1Forecast } from '../engine/marketClearing';
@@ -335,6 +338,12 @@ function GameManagement({ gameId, session, onBack, logout }) {
     return () => { cancelled = true; };
   }, [gameId]);
 
+  useEffect(() => {
+    if (tab === 'round') {
+      fetchSubmissions();
+    }
+  }, [tab, fetchSubmissions]);
+
   const addFirm = async () => {
     if (!newFirmName.trim()) return;
     const pin = generatePin();
@@ -402,6 +411,7 @@ function GameManagement({ gameId, session, onBack, logout }) {
 
   const openRound = async () => {
     const nextRound = (game.current_round || 0) + 1;
+    setSubmissions([]);
     await supabase.from('games').update({ current_round: nextRound, round_status: 'open' }).eq('id', gameId);
     fetchGame();
   };
@@ -484,8 +494,74 @@ function GameManagement({ gameId, session, onBack, logout }) {
       }
 
       await supabase.from('firm_state').upsert(stateInserts, { onConflict: 'game_id,firm_id,round' });
-      await supabase.from('games').update({ round_status: 'cleared' }).eq('id', gameId);
+
+      // 1. Update Market Data (History & Forecast) for Plots
+      const { data: currentMarket } = await supabase
+        .from('market_data')
+        .select('*')
+        .eq('game_id', gameId);
+
+      if (currentMarket) {
+        const marketUpdates = [];
+        const marketInserts = [];
+
+        ['A', 'B', 'C'].forEach(p => {
+          const prodResult = results[p];
+          const forecastRow = currentMarket.find(m => m.product === p && m.type === 'Forecast');
+          
+          if (forecastRow) {
+            // Forecast becomes History with actual clearing results
+            marketUpdates.push({
+              id: forecastRow.id,
+              type: 'History',
+              price: prodResult.price,
+              demand: prodResult.qty
+            });
+
+            // Calculate new forecast for next round
+            const historyForProd = currentMarket
+              .filter(m => m.product === p && m.type === 'History')
+              .sort((a, b) => a.sort_order - b.sort_order);
+            const seriesDemand = [...historyForProd.map(h => h.demand), prodResult.qty];
+            const seriesPrice = [...historyForProd.map(h => h.price), prodResult.price];
+            
+            const growth = gameConfig.parameters[p]?.growth || 1.0;
+            const forecastDemand = calculateAR1Forecast(seriesDemand, growth);
+            const forecastPrice = calculateAR1Forecast(seriesPrice, 1.0); 
+
+            marketInserts.push({
+              game_id: gameId,
+              product: p,
+              type: 'Forecast',
+              year: `R${gameConfig.current_round + 1}`,
+              price: forecastPrice.mean,
+              price_sd: forecastPrice.sd,
+              demand: forecastDemand.mean,
+              demand_sd: forecastDemand.sd,
+              sort_order: forecastRow.sort_order + 1
+            });
+          }
+        });
+
+        if (marketUpdates.length > 0) await supabase.from('market_data').upsert(marketUpdates);
+        if (marketInserts.length > 0) await supabase.from('market_data').insert(marketInserts);
+      }
+
+      // 2. Update Game Parameters (Apply Growth for next round clearing)
+      const nextParams = JSON.parse(JSON.stringify(gameConfig.parameters));
+      ['A', 'B', 'C'].forEach(p => {
+        if (nextParams[p]) {
+          nextParams[p].intercept = parseFloat((nextParams[p].intercept * (nextParams[p].growth || 1)).toFixed(4));
+        }
+      });
+
+      await supabase.from('games').update({ 
+        round_status: 'cleared',
+        parameters: nextParams
+      }).eq('id', gameId);
+
       fetchGame();
+      fetchMarketData();
       refreshLeaderboard();
     } catch (err) { console.error(err); } finally { setClearing(false); }
   };
@@ -545,6 +621,7 @@ function GameManagement({ gameId, session, onBack, logout }) {
 
   const resetGame = async () => {
     if (!confirm("Reset game?")) return;
+    setSubmissions([]);
     await supabase.from('games').update({ current_round: 1, round_status: 'setup' }).eq('id', gameId);
     await supabase.from('decisions').delete().eq('game_id', gameId);
     await supabase.from('firm_state').delete().eq('game_id', gameId);
@@ -614,6 +691,54 @@ function GameManagement({ gameId, session, onBack, logout }) {
               <div className="bg-slate-50 p-4 rounded">Status<div className="text-2xl font-bold capitalize">{game?.round_status}</div></div>
               <div className="bg-slate-50 p-4 rounded">Submissions<div className="text-2xl font-bold">{submissions.length} / {firms.length}</div></div>
             </div>
+
+            <div className="mb-8 border-t pt-6">
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="font-bold flex items-center gap-2 text-slate-700">
+                  <Users className="w-4 h-4 text-slate-400" />
+                  Submission Status
+                </h4>
+                <button 
+                  onClick={() => fetchSubmissions()}
+                  className="text-xs flex items-center gap-1 text-[#4fd1c5] hover:text-[#38b2ac] font-bold"
+                >
+                  <RefreshCw className="w-3 h-3" /> Refresh
+                </button>
+              </div>
+              
+              {firms.length === 0 ? (
+                <div className="text-center py-6 bg-slate-50 rounded-lg border border-dashed border-slate-200 text-slate-400 text-sm">
+                  No firms in the roster yet.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {firms.map(f => {
+                    const submission = submissions.find(s => s.firm_id === f.id);
+                    const isSubmitted = !!submission;
+                    return (
+                      <div key={f.id} className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                        isSubmitted ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-50 border-slate-100'
+                      }`}>
+                        <div className="truncate flex-1">
+                          <div className="font-medium text-sm truncate text-slate-700">{f.name}</div>
+                          {isSubmitted && (
+                            <div className="text-[10px] text-emerald-600 font-medium">
+                              {new Date(submission.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          )}
+                        </div>
+                        {isSubmitted ? (
+                          <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                        ) : (
+                          <Clock className="w-4 h-4 text-slate-300 flex-shrink-0" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             {submissions.length > 0 && (
               <div className="mb-8">
                 <div className="flex justify-between mb-4"><h4 className="font-bold">Supply & Demand Curve</h4><div className="flex gap-1">{['A','B','C'].map(p => <button key={p} onClick={() => setSupplyTab(p)} className={`px-3 py-1 rounded text-xs ${supplyTab===p?'bg-[#4fd1c5] text-[#1a365d]':'bg-slate-100'}`}>Product {p}</button>)}</div></div>
