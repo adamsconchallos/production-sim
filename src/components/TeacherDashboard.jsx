@@ -620,12 +620,79 @@ function GameManagement({ gameId, session, onBack, logout }) {
   };
 
   const resetGame = async () => {
-    if (!confirm("Reset game?")) return;
+    if (!confirm("Reset game? This will clear all submissions, market history, and results.")) return;
     setSubmissions([]);
-    await supabase.from('games').update({ current_round: 1, round_status: 'setup' }).eq('id', gameId);
-    await supabase.from('decisions').delete().eq('game_id', gameId);
-    await supabase.from('firm_state').delete().eq('game_id', gameId);
-    fetchGame();
+    setClearing(true);
+    
+    try {
+      // 1. Reset Game Record
+      await supabase.from('games').update({ 
+        current_round: 1, 
+        round_status: 'setup' 
+      }).eq('id', gameId);
+
+      // 2. Delete all round-specific data
+      await Promise.all([
+        supabase.from('decisions').delete().eq('game_id', gameId),
+        supabase.from('firm_state').delete().eq('game_id', gameId),
+        supabase.from('market_data').delete().eq('game_id', gameId),
+        supabase.from('loan_requests').delete().eq('game_id', gameId)
+      ]);
+
+      // 3. Re-initialize Market Data
+      const marketInserts = [];
+      let sortOrder = 1;
+      ['A', 'B', 'C'].forEach(prod => {
+        const scen = DEFAULT_SCENARIOS[prod];
+        scen.history.forEach(h => {
+          marketInserts.push({
+            game_id: gameId,
+            product: prod,
+            type: 'History',
+            year: h.year,
+            price: h.price,
+            demand: h.demand,
+            sort_order: sortOrder++
+          });
+        });
+        marketInserts.push({
+          game_id: gameId,
+          product: prod,
+          type: 'Forecast',
+          year: scen.forecast.year,
+          price: scen.forecast.price.mean,
+          demand: scen.forecast.demand.mean,
+          price_sd: scen.forecast.price.sd,
+          demand_sd: scen.forecast.demand.sd,
+          sort_order: sortOrder++
+        });
+      });
+      await supabase.from('market_data').insert(marketInserts);
+
+      // 4. Re-initialize Firm State (Round 0)
+      if (firms.length > 0) {
+        const stateInserts = firms.map(f => ({
+          game_id: gameId,
+          firm_id: f.id,
+          round: 0,
+          state: { ...game.setup, rates: game.rates },
+          inventory_details: { A: { units: 0, value: 0 }, B: { units: 0, value: 0 }, C: { units: 0, value: 0 } },
+          efficiency: 0
+        }));
+        await supabase.from('firm_state').upsert(stateInserts, { onConflict: 'game_id,firm_id,round' });
+      }
+
+      setMessage({ type: 'success', text: 'Game reset successfully.' });
+      fetchGame();
+      fetchFirms();
+      fetchMarketData();
+      refreshLeaderboard();
+    } catch (err) {
+      console.error(err);
+      setMessage({ type: 'error', text: 'Failed to reset game: ' + err.message });
+    } finally {
+      setClearing(false);
+    }
   };
 
   if (loading) return <div className="p-10 text-center text-slate-400">Loading...</div>;
